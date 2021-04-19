@@ -11,7 +11,6 @@ PointBase& PointBase::operator+= (const PointBase& other){
     return *this;
 }
 
-
 bool PointBase::operator== (const PointBase& other) const {
     return x==other.x && y == other.y;
 }

@@ -1,3 +1,6 @@
+#ifndef POINT_HPP
+#define POINT_HPP
+
 # include <vector>
 # include <iterator>
 # include <iostream>
@@ -32,3 +35,5 @@ public:
     double x,y;
 
 };
+
+# endif

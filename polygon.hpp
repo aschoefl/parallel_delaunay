@@ -1,3 +1,6 @@
+#ifndef POLYGON_HPP
+#define POLYGON_HPP
+
 # include <vector>
 # include <iterator>
 # include <iostream>
@@ -11,13 +14,14 @@ public:
     Polygon(PointBase p): c(this, p) {};
 
     void addPoint(double p0, double p1);
+    void addPoint(const PointBase& pin);
 
     friend std::ostream &operator<<(std::ostream &os, const Polygon &poly);
 
     class Point: public PointBase {
     public:
         Point() {};
-        Point(Polygon* pol, PointBase p): poly(pol), PointBase(p) {};
+        Point(Polygon* pol, const PointBase& p): poly(pol), PointBase(p) {};
         Point(Polygon* pol, double p0, double p1): poly(pol), PointBase(p0, p1) {};
         Point(const Point& p): poly(p.poly), PointBase(p.x, p.y){};
         
@@ -36,6 +40,7 @@ public:
         bool operator<= (const Point& other) const;
         bool operator>= (const Point& other) const;
 
+
     private: 
         Polygon* poly; 
     };
@@ -44,3 +49,5 @@ private:
     vector<Point> points;
     Point c;
 };
+
+#endif

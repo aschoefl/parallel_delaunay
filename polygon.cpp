@@ -9,6 +9,14 @@ void Polygon::addPoint(double p0, double p1) {
     points.insert(pos, move(p));
 }
 
+void Polygon::addPoint(const PointBase& pin) {
+    Point p(this, pin);
+    auto pos = std::find_if(points.begin(), points.end(), [p](auto s) {
+        return s < p;
+    });
+    points.insert(pos, move(p));
+}
+
 std::ostream &operator<<(std::ostream &os, const Polygon &poly) {
     os << "[ ";
     for (const auto& p: poly.points)
@@ -17,20 +25,6 @@ std::ostream &operator<<(std::ostream &os, const Polygon &poly) {
     return os;
 }
 
-// Polygon::Point& Polygon::Point::operator-= (const Polygon::Point& other){
-//     x -= other.x;
-//     y -= other.y;
-//     return *this;
-// }
-// Polygon::Point& Polygon::Point::operator+= (const Polygon::Point& other){
-//     x += other.x;
-//     y += other.y;
-//     return *this;
-// }
-
-// bool Polygon::Point::operator== (const Polygon::Point& other) const {
-//     return x==other.x && y == other.y;
-// }
 
 bool Polygon::Point::operator> (const Polygon::Point& other) const {
     Point a = *this-poly->c;
