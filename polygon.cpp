@@ -17,20 +17,20 @@ std::ostream &operator<<(std::ostream &os, const Polygon &poly) {
     return os;
 }
 
-Polygon::Point& Polygon::Point::operator-= (const Polygon::Point& other){
-    x -= other.x;
-    y -= other.y;
-    return *this;
-}
-Polygon::Point& Polygon::Point::operator+= (const Polygon::Point& other){
-    x += other.x;
-    y += other.y;
-    return *this;
-}
+// Polygon::Point& Polygon::Point::operator-= (const Polygon::Point& other){
+//     x -= other.x;
+//     y -= other.y;
+//     return *this;
+// }
+// Polygon::Point& Polygon::Point::operator+= (const Polygon::Point& other){
+//     x += other.x;
+//     y += other.y;
+//     return *this;
+// }
 
-bool Polygon::Point::operator== (const Polygon::Point& other) const {
-    return x==other.x && y == other.y;
-}
+// bool Polygon::Point::operator== (const Polygon::Point& other) const {
+//     return x==other.x && y == other.y;
+// }
 
 bool Polygon::Point::operator> (const Polygon::Point& other) const {
     Point a = *this-poly->c;
@@ -68,9 +68,4 @@ bool Polygon::Point::operator< (const Polygon::Point& other) const {
 bool Polygon::Point::operator<= (const Polygon::Point& other) const {
     if (!(*this>other)) return 1;
     return 0;
-}
-
-std::ostream &operator<<(std::ostream &os, const Polygon::Point &p) {
-  os << "(" << p.x << "," << p.y << ")";
-  return os;
 }
