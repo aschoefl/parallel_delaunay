@@ -1,11 +1,12 @@
 # include "polygon.hpp"
 
+// add points in counter clockwise order
 void Polygon::addPoint(double p0, double p1) {
     Point p(this, p0, p1);
-    auto pos = find_if(points.begin(), points.end(), [p](auto s) {
+    auto pos = std::find_if(points.begin(), points.end(), [p](auto s) {
         return s < p;
     });
-    points.insert(pos, move(p)); // not sure if that works
+    points.insert(pos, move(p));
 }
 
 std::ostream &operator<<(std::ostream &os, const Polygon &poly) {
@@ -15,7 +16,6 @@ std::ostream &operator<<(std::ostream &os, const Polygon &poly) {
     os << "]";
     return os;
 }
-
 
 Polygon::Point& Polygon::Point::operator-= (const Polygon::Point& other){
     x -= other.x;
@@ -40,8 +40,8 @@ bool Polygon::Point::operator> (const Polygon::Point& other) const {
     if (a.y>=0 && b.y<0) return 1;
     if (a.y<0 && b.y>=0) return 0;
     if (a.y==0 && b.y==0) {
-        if (a.x>0 || b.x>0) return a.x>b.x;
-        else return a.x<b.x;
+        if (a.x>0 || b.x>0) return a.x<b.x;
+        else return a.x>b.x;
     }
 
     // check order 

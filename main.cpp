@@ -23,8 +23,10 @@ int main ( int argc, char *argv[] ) {
 
     poly.addPoint(-1,0);
     poly.addPoint(1,0);
+    poly.addPoint(2,0);
     poly.addPoint(0,-1);
     poly.addPoint(0.5,-0.5);
+    poly.addPoint(1,-1);
     poly.addPoint(0,1);
 
     cout << poly << endl;
