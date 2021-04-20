@@ -16,30 +16,21 @@ public:
     void addPoint(double p0, double p1);
     void addPoint(const PointBase& pin);
 
+    void calculateVeroni(void);
+
     friend std::ostream &operator<<(std::ostream &os, const Polygon &poly);
 
     class Point: public PointBase {
     public:
-        Point() {};
+        Point(Polygon* pol) : poly(pol) {};
         Point(Polygon* pol, const PointBase& p): poly(pol), PointBase(p) {};
         Point(Polygon* pol, double p0, double p1): poly(pol), PointBase(p0, p1) {};
         Point(const Point& p): poly(p.poly), PointBase(p.x, p.y){};
         
-        /* TODO: template instead of double implementation */
-        friend Point operator-(Point lhs, const Point& rhs){
-            lhs -= rhs;
-            return lhs;
-        } 
-        friend Point operator+(Point lhs, const Point& rhs){
-            lhs += rhs;
-            return lhs;
-        } 
-
         bool operator< (const Point& other) const;
         bool operator> (const Point& other) const;
         bool operator<= (const Point& other) const;
         bool operator>= (const Point& other) const;
-
 
     private: 
         Polygon* poly; 
@@ -47,6 +38,7 @@ public:
 
 private: 
     vector<Point> points;
+    vector<Point> veroni;
     Point c;
 };
 

@@ -54,6 +54,10 @@ int main ( int argc, char *argv[] ) {
         }
     }
 
+    // PointBase a(0,3);
+    // PointBase b(1,3);
+    // cout << (a+b)/2 << endl;
+
     /* choose one point in middle for testing
        for now test only the method for a larger polygon (in diagonal dir)
        TODO: implement spiral search as in paper
@@ -79,7 +83,7 @@ int main ( int argc, char *argv[] ) {
                     stop = 1;
                     add(PointBase(max(dir_i, 0), max(dir_j,0)));
                 }
-                /* add points (see sketch) and go in diagonal direction if empty cell*/
+                /* add points (see sketch) and go in diagonal direction if cell is empty*/
                 else if (!A[i+incr*dir_i][j+incr*dir_j].empty()) {
                     stop = 1;
                     for_each(A[i+incr*dir_i][j+incr*dir_j].begin(), A[i+incr*dir_i][j+incr*dir_j].end(), add);
@@ -88,6 +92,7 @@ int main ( int argc, char *argv[] ) {
             }
         }
     }
+    poly.calculateVeroni();
 
     cout << A[i][j][0] << poly << endl;
     

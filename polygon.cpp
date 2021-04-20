@@ -1,5 +1,23 @@
 # include "polygon.hpp"
 
+template <typename T> 
+void circumcenter(T& ret, const T& a, const T& b, const T& c) {
+    auto alpha1 = c.x-a.x; 
+    auto beta1 = a.y-c.y;
+    auto gamma1 = alpha1*((a+c)/2).x+beta1*((a+c)/2).y;
+    auto alpha2 = c.x-b.x; 
+    auto beta2 = b.y-c.y;
+    auto gamma2 = alpha2*((b+c)/2).x+beta2*((b+c)/2).y;
+    auto det = alpha1*beta2-alpha2*beta1;
+
+    if (det == 0) {
+        throw ("lines are parallel in circumcenter");
+    } else {
+        ret.x = (gamma1*beta2-gamma2*beta1)/det;
+        ret.y = (gamma2*alpha1-gamma1*alpha2)/det;
+    }
+}
+
 // add points in counter clockwise order
 void Polygon::addPoint(double p0, double p1) {
     Point p(this, p0, p1);
@@ -17,14 +35,29 @@ void Polygon::addPoint(const PointBase& pin) {
     points.insert(pos, move(p));
 }
 
-std::ostream &operator<<(std::ostream &os, const Polygon &poly) {
-    os << "[ ";
-    for (const auto& p: poly.points)
-        os << p << " ";
-    os << "]";
-    return os;
+void Polygon::calculateVeroni(void) {
+    if (points.size() < 2) return;
+    Point cc(this);
+
+    for(auto it = points.begin(); it!=points.end()-1; it++){
+        auto next = it+1;
+        circumcenter(cc, *it, *next, c);
+        veroni.push_back(cc); // cc is copied
+    }
+    circumcenter(cc, points.front(), points.back(), c);
+    veroni.push_back(cc);
 }
 
+std::ostream &operator<<(std::ostream &os, const Polygon &poly) {
+    os << "points: [ ";
+    for (const auto& p: poly.points)
+        os << p << " ";
+    os << "]" << endl << "veroni: [ " ;
+    for (const auto& p: poly.veroni)
+        os << p << " ";
+    os << "]" ;
+    return os;
+}
 
 bool Polygon::Point::operator> (const Polygon::Point& other) const {
     Point a = *this-poly->c;
