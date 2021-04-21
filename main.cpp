@@ -7,7 +7,7 @@ mpiexec -n 4  delauney
 # include <mpi.h>
 # include "polygon.hpp"
 # include "point.hpp"
-
+# include "bucket.hpp"
 using namespace std;
 
 // int main ( int argc, char *argv[] );
@@ -40,7 +40,12 @@ int main ( int argc, char *argv[] ) {
     MPI_Comm_rank(MPI_COMM_WORLD, &p);
 
 
-    int N = 10;
+    int N = 10; 
+    Bucket& root = Bucket::createRoot(N, 5,5);
+    root.newBucket(6);
+
+    exit(0);
+
     vector<PointBase> A[N][N];
 
     /* generate uniform example mesh */

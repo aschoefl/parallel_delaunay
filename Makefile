@@ -8,8 +8,8 @@ OBJECTS = main.o polygon.o
 # all: $(OBJECTS)
 # 	$(CC) $(INCLUDES) $(CFLAGS) -o $(OBJECT_OUT) $(OBJECTS)
 
-all: main.o polygon.o point.o
-	$(CC) -o $(TARGET) main.o polygon.o point.o
+all: main.o polygon.o point.o bucket.o
+	$(CC) -o $(TARGET) main.o polygon.o point.o bucket.o
 	rm -rf *.o
 
 main.o: main.cpp
@@ -20,6 +20,9 @@ polygon.o: polygon.cpp
 
 point.o: point.cpp
 	$(CC) -c point.cpp -I ./
+
+bucket.o: bucket.cpp
+	$(CC) -c bucket.cpp -I ./
 
 clean:
 	rm -rf $(TARGET)
