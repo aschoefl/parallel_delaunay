@@ -29,7 +29,7 @@ NOTES
 class  Bucket {
 public:
     static int N; // global amount of buckets is N*N
-    /* create only one instance outside of class*/
+    /* make sure there is only one root*/
     static shared_ptr<Bucket> createRoot(int N_, int i, int j){
         Bucket* tmp = new Bucket(i,j);
         tmp->N = N_; 
@@ -49,13 +49,10 @@ public:
     int isCorner();
 
 private: 
-    Bucket() {
-        self = move(shared_ptr<Bucket>(this));
-        cout << "in ctor1" << endl;
-    };
+    Bucket();
     Bucket(int i, int j) : ind_i(i), ind_j(j) {
         self = move(shared_ptr<Bucket>(this));
-        cout << "in ctor" << endl;
+        // cout << "in ctor" << endl;
     };
     Bucket(const Bucket&);
 
