@@ -35,14 +35,14 @@ int main ( int argc, char *argv[] ) {
     // exit(0);
 
     /* Initialize MPI */
-    MPI_Init(&argc, &argv);
-    MPI_Comm_size(MPI_COMM_WORLD, &P);
-    MPI_Comm_rank(MPI_COMM_WORLD, &p);
+    // MPI_Init(&argc, &argv);
+    // MPI_Comm_size(MPI_COMM_WORLD, &P);
+    // MPI_Comm_rank(MPI_COMM_WORLD, &p);
 
 
     int N = 10; 
-    Bucket& root = Bucket::createRoot(N, 5,5);
-    root.newBucket(6);
+    shared_ptr<Bucket> root = Bucket::createRoot(N, 5,5);
+    // root.newBucket(6);
 
     exit(0);
 
@@ -101,7 +101,7 @@ int main ( int argc, char *argv[] ) {
 
     cout << A[i][j][0] << poly << endl;
     
-    MPI_Finalize();
+    // MPI_Finalize();
     exit(0);
 }
 
