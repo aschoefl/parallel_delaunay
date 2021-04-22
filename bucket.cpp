@@ -69,7 +69,7 @@ shared_ptr<Bucket> Bucket::searchCorner(vector<int>& to_go){
 
         next_step = -1;
         for (int k=0; k<4; k++) {
-            
+
             /* don't allow to go back*/
             if (k==inc(to_go[4],4)/2) continue; 
             /* don't allow to go "behind" original bucket */
@@ -98,21 +98,7 @@ shared_ptr<Bucket> Bucket::searchCorner(vector<int>& to_go){
     return current;
 }
 
-/* test function to be deleted in the end */
-void Bucket::test() { // assume N = 10, (i,j) = (5,5)
-    shared_ptr<Bucket> current = self;
-    current->newBucket(6);
-    while (current->neighbours[6] != nullptr) {
-        current = current->neighbours[6];
-        current->newBucket(6);
-    }
 
-    current = neighbours[6];
-    current = current->neighbours[6];
-    current = current->neighbours[0];
-
-    current->newBucket(0);
-}
 
 void Bucket::addBucket(int dir){ // to be called from corner
 
@@ -171,7 +157,6 @@ void Bucket::addBucket(int dir){ // to be called from corner
         new_bucket->neighbours[inc(cd, 4)] = current->self;
     }
 }
-
 
 void Bucket::newBucket(int dir){ // public function
 
@@ -253,3 +238,21 @@ void Bucket::newBucket(int dir){ // public function
     //     neighbours[dir]->newBucket(6); 
     // } // WORKING :DDD
 }
+
+/* test function to be deleted in the end */
+void Bucket::test() { // assume N = 10, (i,j) = (5,5)
+    shared_ptr<Bucket> current = self;
+    current->newBucket(6);
+    while (current->neighbours[6] != nullptr) {
+        current = current->neighbours[6];
+        current->newBucket(6);
+    }
+
+    current = neighbours[6];
+    current = current->neighbours[6];
+    current = current->neighbours[6];
+    current = current->neighbours[0];
+
+    current->newBucket(0);
+}
+
