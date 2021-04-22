@@ -66,11 +66,10 @@ shared_ptr<Bucket> Bucket::searchCorner(vector<int>& to_go){
     int possible_step = -1;
 
     while(cond) { // while current is not a corner
-        cout << "in while" << endl;
 
         next_step = -1;
         for (int k=0; k<4; k++) {
-            cout << "in for" << endl;
+            
             /* don't allow to go back*/
             if (k==inc(to_go[4],4)/2) continue; 
             /* don't allow to go "behind" original bucket */
@@ -83,8 +82,6 @@ shared_ptr<Bucket> Bucket::searchCorner(vector<int>& to_go){
             possible_step = 2*k;
 
         }
-
-        // cout << "after for " << endl;
 
         if (next_step == -1)
             next_step = possible_step;
