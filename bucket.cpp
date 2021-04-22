@@ -7,6 +7,12 @@ inline int inc(int dir, int incr){
     return (dir+incr)%8;
 }
 
+inline int Bucket::dist(const shared_ptr<Bucket> other) const {
+    return (ind_i-other->i())*(ind_i-other->i()) + 
+        (ind_j-other->j())*(ind_j-other->j());
+}
+
+
 /*  
 if bucket is an ordernary corner return free diagonal dir, 
 if bucket is a sinle element (not connected to anything) return 8,
@@ -31,8 +37,8 @@ int Bucket::isCorner() {
 }
 
 /* diag .. dir in diag direction (viewpoint corner) */
-void Bucket::newToCorner(int diag){ // to be called from corner!
-    if (!(diag%2)) throw ("diag must be uneven in newToCorner");
+void Bucket::addToCorner(int diag){ // to be called from corner!
+    if (!(diag%2)) throw ("diag must be uneven in addToCorner");
     addBucket(inc(diag,1)); 
     addBucket(inc(diag,7));
     addBucket(diag);
@@ -43,8 +49,72 @@ void Bucket::newToCorner(int diag){ // to be called from corner!
             cout << " ("<<bucket->ind_i<<","<<bucket->ind_j<<") ";
     }
     cout << endl;
-
     // cout << inc(diag,1) << inc(diag,7) << diag << endl;
+}
+
+
+/*
+to_go = {cnt dir 0, cnt dir 2, cnt dir 4, cnt dir 6, last step, original dir}
+all dirs given from 0 to 7
+*/
+shared_ptr<Bucket> Bucket::searchCorner(vector<int>& to_go){
+
+    cout << "in search corner " << endl;
+    shared_ptr<Bucket> current = self;
+    bool cond = current->isCorner() == -1;
+    int next_step = -1;
+    int possible_step = -1;
+
+    while(cond) { // while current is not a corner
+        cout << "in while" << endl;
+
+        next_step = -1;
+        for (int k=0; k<4; k++) {
+            cout << "in for" << endl;
+            /* don't allow to go back*/
+            if (k==inc(to_go[4],4)/2) continue; 
+            /* don't allow to go "behind" original bucket */
+            if (k==inc(to_go[5],4)/2 && to_go[k]<0) continue;
+
+            if (to_go[k] > 0 && current->neighbours[k*2] != nullptr) {
+                next_step = k*2;
+                break;
+            }
+            possible_step = 2*k;
+
+        }
+
+        // cout << "after for " << endl;
+
+        if (next_step == -1)
+            next_step = possible_step;
+
+        to_go[4] = next_step; // update last step
+        to_go[next_step/2]--;
+        to_go[inc(next_step, 4)]++;
+        current = current->neighbours[next_step];
+
+        cout << "cond: " << (current->isCorner() == -1) << endl;
+        cond = current->isCorner() == -1;
+    }
+
+    return current;
+}
+
+/* test function to be deleted in the end */
+void Bucket::test() { // assume N = 10, (i,j) = (5,5)
+    shared_ptr<Bucket> current = self;
+    current->newBucket(6);
+    while (current->neighbours[6] != nullptr) {
+        current = current->neighbours[6];
+        current->newBucket(6);
+    }
+
+    current = neighbours[6];
+    current = current->neighbours[6];
+    current = current->neighbours[0];
+
+    current->newBucket(0);
 }
 
 void Bucket::addBucket(int dir){ // to be called from corner
@@ -116,14 +186,70 @@ void Bucket::newBucket(int dir){ // public function
 
     auto diag = isCorner();
     if (diag == 8) { // if root element, check if dir is diagonal
-        if (dir%2) newToCorner(dir);
-        else newToCorner(inc(dir,1));
+        if (dir%2) addToCorner(dir);
+        else addToCorner(inc(dir,1));
     } else if (diag == -1) { // if not a corner
-        // TODO: DEAL WITH THAT CASE!
-        throw("not a corner in newBucket, still to be implemented");      
+
+        cout << "not a corner" << endl;
+        // throw("not a corner in newBucket, still to be implemented"); 
+        switch (dir)
+        {
+        case 1:
+            neighbours[0]->newBucket(2);
+            return;
+            break;
+        case 3:
+            neighbours[4]->newBucket(2);
+            return;
+            break;
+        case 5:
+            neighbours[4]->newBucket(6);
+            return;
+            break;
+        case 7:
+            neighbours[0]->newBucket(6);
+            return;
+            break;
+        default:
+            break;
+        }
+
+        if (dir%2) throw("dir must be even if not a corner");
+
+        /* search nearest corner and write it in 'corner' 
+           note that accessed neighbours cannot be nullptr
+        */
+        vector<int> to_go(6,0);
+        shared_ptr<Bucket> corner;
+        to_go[dir/2]++;
+        to_go[inc(dir,2)/2]++;
+        to_go[inc(dir,4)/2]--;
+        to_go[inc(dir,6)/2]--; 
+        to_go[4] = inc(dir,2); // last step
+        to_go[5] = dir; // original dir to add 
+        corner = neighbours[inc(dir,6)]->searchCorner(to_go); 
+        {
+            vector<int> to_go_tmp(6,0);
+            shared_ptr<Bucket> tmp;
+            to_go_tmp[dir/2]++;
+            to_go_tmp[inc(dir,6)/2]++; 
+            to_go_tmp[inc(dir,4)/2]--;
+            to_go_tmp[inc(dir,2)/2]--; 
+            to_go_tmp[4] = inc(dir,6); // last step
+            to_go_tmp[5] = dir; // original dir to add 
+            tmp = neighbours[inc(dir,2)]->searchCorner(to_go_tmp); 
+            if (dist(tmp) < dist(corner)) {
+                corner = tmp;
+                to_go = move(to_go_tmp);
+            }
+        }
+
+        cout << "found corner ("<<corner->ind_i<<","<<corner->ind_j<<")" << endl;
+ 
     } else {
-        newToCorner(diag);
+        addToCorner(diag);
     }
+
 
     // /* just for testing */
     // if (neighbours[dir] != nullptr) {
