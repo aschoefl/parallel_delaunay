@@ -316,7 +316,7 @@ shared_ptr<Bucket> Bucket::operator() (int i, int j) const{
     auto y = j-ind_j;
     vector<int> dir(8,0);
 
-    cout << "x: " << x << " y: " << y << endl;
+    // cout << "x: " << x << " y: " << y << endl;
 
     /* write as directions */
     if (x>=0 && y>=0) {
@@ -340,11 +340,12 @@ shared_ptr<Bucket> Bucket::operator() (int i, int j) const{
         dir[6] = -(y+dir[7]);
     }
 
-    cout << "dir :";
-    for (auto v : dir)
-       cout <<  v << " ";
-    cout << endl;
+    // cout << "dir: ";
+    // for (auto v : dir)
+    //    cout <<  v << " ";
+    // cout << endl;
 
+    /* go to bucket of index and add if needed */
     shared_ptr<Bucket> current = self;
     shared_ptr<Bucket> next;
     for(int k=0; k<8; k++) {
@@ -375,16 +376,17 @@ void Bucket::test() { // assume N = 10, (i,j) = (5,5)
         current->neighbours[6]->isBnd();
     }
 
-    // shared_ptr<Bucket> a = (*self)(5,8);
-    // a->printNeighbours();
+    shared_ptr<Bucket> a = (*self)(9,8);
+    a->printNeighbours();
 
-    current = neighbours[6];
-    current = current->neighbours[6];
-    current = current->neighbours[6];
-    current = current->neighbours[0];
+    auto b = (*a)(0,0);
+    b->printNeighbours();
 
+    // current = neighbours[6];
+    // current = current->neighbours[6];
+    // current = current->neighbours[6];
+    // current = current->neighbours[0];
 
-    current->newBucket(1);
-
+    // current->newBucket(1);
 }
 
