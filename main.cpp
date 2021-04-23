@@ -41,6 +41,7 @@ int main ( int argc, char *argv[] ) {
 
 
     int N = 10; 
+
     shared_ptr<Bucket> root = Bucket::createRoot(N, 5,5);
     root->test();
 
