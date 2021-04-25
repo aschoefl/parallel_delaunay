@@ -2,6 +2,27 @@
 
 int Bucket::N = 0;
 shared_ptr<Bucket> Bucket::bb = move(shared_ptr<Bucket>((Bucket*) new BoundaryBucket()));
+list<PointBase> Bucket::buckets;
+shared_ptr<Bucket> Bucket::root = nullptr;
+
+void Bucket::addToList(){
+    PointBase p(ind_i, ind_j);
+    if (!(find(buckets.begin(), buckets.end(), p) != buckets.end()))
+        buckets.push_back(move(p));
+}
+
+void Bucket::printList(){
+    // buckets.sort();
+    ofstream myfile ("points.txt");
+    if (myfile.is_open()) {
+        myfile << "[";
+        for (auto p : buckets) 
+            myfile << p << ", ";
+        myfile << "]" << endl;
+        myfile.close();
+    }
+    else cout << "Unable to open file";
+}
 
 inline int inc(int dir, int incr){
     if (incr < 0) throw runtime_error("invalid increment in inc, must be postive");
@@ -31,8 +52,9 @@ else not return -1
 */
 int Bucket::isCorner() {
 
-    int np_cnt = 0, bnd_cnt = 0, bnd_dir;
+    int np_cnt = 0, bnd_cnt = 0;
     int dir[2];
+    int bnd_dir[2];
     for (int i=0; i<8; i+=2){ // iterate through even neighbours
         if (neighbours[i] == nullptr) {
             if (np_cnt == 0) dir[0]=i;
@@ -40,7 +62,8 @@ int Bucket::isCorner() {
             np_cnt++;
         }
         else if (neighbours[i]->isBnd()){
-            if (bnd_cnt == 0) bnd_dir=i;
+            if (bnd_cnt == 0) bnd_dir[0]=i;
+            if (bnd_cnt == 1) bnd_dir[1]=i;
             bnd_cnt++;
         }
     }
@@ -50,8 +73,12 @@ int Bucket::isCorner() {
         else return inc(dir[1],1);
     }
     if (np_cnt==1 && bnd_cnt == 1){
-        if (inc(dir[0],2)==bnd_dir) return inc(dir[0],1);
-        else return inc(bnd_dir,1);
+        if (inc(dir[0],2)==bnd_dir[0]) return inc(dir[0],1);
+        else return inc(bnd_dir[0],1);
+    }
+    if (bnd_cnt==2) { 
+        if (inc(bnd_dir[0],2)==bnd_dir[1]) return inc(bnd_dir[0],1);
+        else return inc(bnd_dir[1],1);
     }
 
     if (np_cnt==4) return 8;
@@ -218,19 +245,28 @@ void Bucket::newBucket(int dir){ // public function
         return;
     }
 
+    // addBucket(dir);
+    // return;
+
     auto diag = isCorner();
     if (diag == 8) { // if root element, check if dir is diagonal
         cout << "is root " << endl;
         if (dir%2) addToCorner(dir);
         else addToCorner(inc(dir,1));
     } else if (diag == -1) { // if not a corner
-
-        cout << "not a corner" << endl;
+        auto bad = [this] (int i){
+            if (neighbours[i] == nullptr ) return 1;
+            if (neighbours[i]->isBnd()) return 1;
+            return 0;
+        };
+        // cout << "not a corner" << endl;
         // throw("not a corner in newBucket, still to be implemented"); 
         switch (dir)
         {
         case 1:
-            if (neighbours[0] == nullptr) {
+            if (bad(0)) {
+                if (bad(2)) 
+                    throw runtime_error("no good neighbours in newBucket");
                 neighbours[2]->newBucket(0);
                 return;
             }
@@ -238,7 +274,9 @@ void Bucket::newBucket(int dir){ // public function
             return;
             break;
         case 3:
-            if (neighbours[4] == nullptr)  {
+            if (bad(4)) {
+                if (bad(2)) 
+                    throw runtime_error("no good neighbours in newBucket");
                 neighbours[2]->newBucket(4);
                 return;
             }
@@ -246,7 +284,9 @@ void Bucket::newBucket(int dir){ // public function
             return;
             break;
         case 5:
-            if (neighbours[4] == nullptr)  {
+            if (bad(0)) {
+                if (bad(6)) 
+                    throw runtime_error("no good neighbours in newBucket");
                 neighbours[6]->newBucket(4);
                 return;
             }
@@ -254,7 +294,9 @@ void Bucket::newBucket(int dir){ // public function
             return;
             break;
         case 7:
-            if (neighbours[0] == nullptr)  {
+            if (bad(0)) {
+                if (bad(6)) 
+                    throw runtime_error("no good neighbours in newBucket");
                 neighbours[6]->newBucket(0);
                 return;
             }
@@ -348,14 +390,20 @@ shared_ptr<Bucket> Bucket::operator() (int i, int j) const{
     /* go to bucket of index and add if needed */
     shared_ptr<Bucket> current = self;
     shared_ptr<Bucket> next;
+
     for(int k=0; k<8; k++) {
         while (dir[k]) {
             next = current->neighbours[k];
-            if (next == nullptr) {
-                current->newBucket(k);
-                next = current->neighbours[k];
+            /* while insted of if, see notes for explanation*/
+            while (next == nullptr) { 
+                if (self == root) {
+                    current->newBucket(k);
+                    next = current->neighbours[k];
+                } else {
+                    return (*root)(i,j);
+                }
             }
-            else if (next->isBnd())
+            if (next->isBnd())
                 throw runtime_error("index out of bound in ()");
             current = next;
             dir[k]--;
@@ -366,21 +414,42 @@ shared_ptr<Bucket> Bucket::operator() (int i, int j) const{
 
 
 /* test function to be deleted in the end */
-void Bucket::test() { // assume N = 10, (i,j) = (5,5)
-    shared_ptr<Bucket> current = self;
-    current->newBucket(6);
-    while (current->neighbours[6] != nullptr) {
-        if (current->neighbours[6]->isBnd()) break;
-        current = current->neighbours[6];
-        current->newBucket(6);
-        current->neighbours[6]->isBnd();
-    }
+void Bucket::test() { 
+    // shared_ptr<Bucket> current = self;
+    // current->newBucket(6);
+    // while (current->neighbours[6] != nullptr) {
+    //     if (current->neighbours[6]->isBnd()) break;
+    //     current = current->neighbours[6];
+    //     current->newBucket(6);
+    //     current->neighbours[6]->isBnd();
+    // }
+    // self->printList();
+    // shared_ptr<Bucket> a = (*self)(9,8);
+    shared_ptr<Bucket> a = (*self)(0,0);
+    // a = (*a)(N-1,0);
+    // a = (*a)(N-1,N-1);
+    // a = (*a)(0,N-1);
+    // a = (*a)(0,2);
 
-    shared_ptr<Bucket> a = (*self)(9,8);
-    a->printNeighbours();
+    // a->printNeighbours();
 
-    auto b = (*a)(0,0);
-    b->printNeighbours();
+    a = self;
+    (*a)(0,N-1);
+    (*a)(N-1,0);
+    // (*a)(N/2,0);
+    (*a)(N-1,N-1);
+
+    // a = (*a)(N/2,N/2);
+    // a = (*a)(0,N/2);
+
+    a->printList();
+
+
+    // a->printNeighbours();
+
+    // auto b = (*a)(3,3);
+    // b->printNeighbours();
+
 
     // current = neighbours[6];
     // current = current->neighbours[6];

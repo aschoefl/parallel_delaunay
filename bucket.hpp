@@ -6,6 +6,8 @@
 # include <iostream>
 # include <algorithm>
 # include <memory>
+# include <list>
+#include <fstream>
 # include "point.hpp"
 using namespace std;
 
@@ -30,18 +32,26 @@ class  Bucket {
 
 public:
     static int N; // global amount of buckets is N*N
-    /* make sure there is only one root*/
+    /* make sure there is only one root 
+    achtung pfusch
+    */
     static shared_ptr<Bucket> createRoot(int N_, int i, int j){
-        Bucket* tmp = new Bucket(i,j);
-        tmp->N = N_; 
-        return tmp->self;
+        if (root == nullptr) {
+            Bucket* tmp = new Bucket(i,j);
+            tmp->N = N_; 
+            root = tmp->self;
+            return tmp->self;
+        } 
+        cout << "root already exists" << endl;
+        return root;
     }
+    static shared_ptr<Bucket> root;
     static shared_ptr<Bucket> bb;
+    static list<PointBase> buckets; // just for debugging
 
     shared_ptr<Bucket> operator() (int i, int j) const;
 
     void test(); //just for testing new functions
-
 
     void setCoordinates(vector<double>&& vec) {
         coordinates = move(vec);
@@ -60,16 +70,19 @@ public:
     int j() const { return ind_j;}
     /* returned by value, to be compatible with set function */
     vector<double> getCoordinates() const { return coordinates; };
+    void printList();
+    int getN() {return N;};
 
-/* TODO: make that nicer, not safe*/
+/* TODO: make that nicer, not safe ? */
 protected:
     Bucket() {}; // for boundary bucket
 
-private: 
+private:
     /*** private ctors and such ***/
     Bucket(int i, int j) : ind_i(i), ind_j(j) {
         self = move(shared_ptr<Bucket>(this));
         is_bnd = 0;
+        addToList();
         // cout << "in ctor" << endl;
     };
     Bucket(const Bucket&); // deactivate copy-ctor
@@ -88,6 +101,8 @@ private:
     void addToCorner(int diag);
     void addBucket(int dir);
     shared_ptr<Bucket> searchCorner(vector<int>& to_go);
+
+    void addToList();
 };
 
 class BoundaryBucket: private Bucket {

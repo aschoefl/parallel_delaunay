@@ -18,6 +18,11 @@ public:
 
     bool operator== (const PointBase& other) const;
     bool operator!= (const PointBase& other) const;
+    /* lexicographic order */
+    bool operator< (const PointBase& other) const;
+    bool operator<= (const PointBase& other) const;
+    bool operator> (const PointBase& other) const;
+    bool operator>= (const PointBase& other) const;
     
     /* Arithmetic operators here because of templates*/
     template <typename T>
