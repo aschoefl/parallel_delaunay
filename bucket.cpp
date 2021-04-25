@@ -12,7 +12,6 @@ void Bucket::addToList(){
 }
 
 void Bucket::printList(){
-    // buckets.sort();
     ofstream myfile ("points.txt");
     if (myfile.is_open()) {
         myfile << "[";
@@ -22,6 +21,13 @@ void Bucket::printList(){
         myfile.close();
     }
     else cout << "Unable to open file";
+
+    // buckets.sort();
+    // cout << "List of buckets [";
+    // for (auto p : buckets) 
+    //     cout << p << ", ";
+    // cout << "]" << endl;
+
 }
 
 inline int inc(int dir, int incr){
@@ -45,124 +51,6 @@ inline void Bucket::printNeighbours() const {
     cout << endl;
 }
 
-/*  
-if bucket is an ordernary corner return free diagonal dir, 
-if bucket is a sinle element (not connected to anything) return 8,
-else not return -1
-*/
-int Bucket::isCorner() {
-
-    int np_cnt = 0, bnd_cnt = 0;
-    int dir[2];
-    int bnd_dir[2];
-    for (int i=0; i<8; i+=2){ // iterate through even neighbours
-        if (neighbours[i] == nullptr) {
-            if (np_cnt == 0) dir[0]=i;
-            if (np_cnt == 1) dir[1]=i;
-            np_cnt++;
-        }
-        else if (neighbours[i]->isBnd()){
-            if (bnd_cnt == 0) bnd_dir[0]=i;
-            if (bnd_cnt == 1) bnd_dir[1]=i;
-            bnd_cnt++;
-        }
-    }
-
-    if (np_cnt==2) { // assign diagonal dir
-        if (inc(dir[0],2)==dir[1]) return inc(dir[0],1);
-        else return inc(dir[1],1);
-    }
-    if (np_cnt==1 && bnd_cnt == 1){
-        if (inc(dir[0],2)==bnd_dir[0]) return inc(dir[0],1);
-        else return inc(bnd_dir[0],1);
-    }
-    if (bnd_cnt==2) { 
-        if (inc(bnd_dir[0],2)==bnd_dir[1]) return inc(bnd_dir[0],1);
-        else return inc(bnd_dir[1],1);
-    }
-
-    if (np_cnt==4) return 8;
-    return -1;
-}
-
-/* diag .. dir in diag direction (viewpoint corner) */
-void Bucket::addToCorner(int diag){ // to be called from corner!
-    if (!(diag%2)) throw ("diag must be uneven in addToCorner");
-    addBucket(inc(diag,1)); 
-    addBucket(inc(diag,7));
-    addBucket(diag);
-
-    cout << "addToCorner: ";
-    printNeighbours();
-}
-
-
-/*
-to_go = {cnt dir 0, cnt dir 2, cnt dir 4, cnt dir 6, last step, original dir}
-all dirs given from 0 to 7
-*/
-shared_ptr<Bucket> Bucket::searchCorner(vector<int>& to_go){
-
-    // cout << "in search corner with to_go:";
-    // for (auto v : to_go)
-    //    cout <<  v << " ";
-    // cout << endl;
-
-    shared_ptr<Bucket> current = self;
-    bool cond = current->isCorner() == -1;
-
-
-    int cnt = 0; // just for testing
-    while(cond) { // while current is not a corner
-
-        int next_step = -1;
-        int possible_step = -1;
-        for (int k=0; k<4; k++) {
-
-            /* don't allow to go back*/
-            if (k==inc(to_go[4],4)/2) continue; 
-
-            /* don't allow to go "behind" original bucket */
-            if (k==inc(to_go[5],4)/2 && to_go[k]<1) continue;
-
-            /* desirable direction to go */
-            if (to_go[k] > 0 && current->neighbours[k*2] != nullptr && !(current->neighbours[k*2]->isBnd()) ) {
-                next_step = k*2;
-                break;
-            }
-
-            /* possible direction to go */
-            if (current->neighbours[k*2] != nullptr && !(current->neighbours[k*2]->isBnd())) 
-                possible_step = 2*k;
-
-        }
-
-        if (possible_step == -1 && next_step == -1) 
-            throw runtime_error("nowhere to go in searchCorner");
-
-        /* go in possible direction if desirable dir not available */
-        if (next_step == -1) 
-            next_step = possible_step;
-        
-        to_go[4] = next_step; // update last step
-        to_go[next_step/2]--;  // update step counter
-        to_go[inc(next_step, 4)/2]++; // update step counter
-        current = current->neighbours[next_step]; // update current node
-
-        // current->printNeighbours();
-        cond = current->isCorner() == -1; // check if corner reached
-        cnt++;
-
-        if (cnt == 100) {
-            throw runtime_error("no end after 100 search steps");
-        }
-    }
-
-    cout << "found corner ("<<current->ind_i<<","<<current->ind_j<<")";
-    cout <<  " after " << cnt << " steps in searchCorner" << endl;
-    return current;
-}
-
 void Bucket::getIndex(int const dir, int& i, int& j){
     /* compute global indices for new bucket */
     i = ind_i;
@@ -173,15 +61,20 @@ void Bucket::getIndex(int const dir, int& i, int& j){
     if (2>dir || dir>6) i++;
 }
 
-
 void Bucket::addBucket(int dir){ // to be called from corner
+
+    if (dir<0 || dir>7) throw ("invalid direction in addBucket");
+    if (neighbours[dir] != nullptr) {
+        cout << "Neighbour already exists" << endl;
+        return;
+    }
 
     /* compute global indices for new bucket */
     int i,j;
     getIndex(dir, i,j);
 
     if (i==N || j==N || i<0 || j<0) {
-        cout << "Indices ("<<i<<","<<j<<") out of bound in newBucket. No new Bucket created" << endl;
+        cout << "Indices ("<<i<<","<<j<<") out of bound in addBuket. No Bucket added" << endl;
         return;
     }
     // cout << "add Bucket with global indices ("<<i<<","<<j<<") in dir " << dir << endl;
@@ -191,14 +84,16 @@ void Bucket::addBucket(int dir){ // to be called from corner
     shared_ptr<Bucket> current = self;
     /* work around the memory leaks */
     shared_ptr<Bucket> new_bucket = (new Bucket(i,j))->self;
-    for (int k = 0; k<8; k++){ 
+
+
+    for (auto k = 0; k<8; k++){ 
         /* assign boundary buckets */
         new_bucket->getIndex(k,i,j);
         if (i==N || j==N || i<0 || j<0)
             new_bucket->neighbours[k] = bb;
     }
 
-    for (int k = 0; k<8; k++){ //go counter clockwise until nullptr
+    for (auto k=0; k<8; k++) {
 
         /* set links to each other */
         current->neighbours[cd] = new_bucket; 
@@ -207,26 +102,40 @@ void Bucket::addBucket(int dir){ // to be called from corner
         /* go in previous even dir */
         if(inc(cd,7)%2) next_dir = inc(cd, 6);
         else next_dir = inc(cd, 7);
-
-        /* check if neighbour next_dir exists */
-        if (current->neighbours[next_dir] == nullptr || current->neighbours[next_dir]->isBnd())
-            break;
-        else current = current->neighbours[next_dir];
-
-        /* update dir of new bucket */
+        
+        if (current->neighbours[next_dir] == nullptr || current->neighbours[next_dir]->isBnd()) {
+            if (inc(cd,7)%2) { // if previous dir is uneven
+                next_dir = inc(cd, 7);
+                if (current->neighbours[next_dir] == nullptr || current->neighbours[next_dir]->isBnd())
+                    break;
+                /* skip one iteration */
+                k++;
+                cd = inc(cd,1); 
+            } else break;
+        } 
+        
+        current = current->neighbours[next_dir];
         cd = inc(cd,1);
     }
     cd = dir; 
     current = self;
     for (int k = 1; k<8; k++){ //go clockwise until nullptr
         /* go in next even dir */
-        if(inc(cd,7)%2) next_dir = inc(cd, 2);
+        if(inc(cd,1)%2) next_dir = inc(cd, 2);
         else next_dir = inc(cd, 1);
 
         /* check if neighbour next_dir exists */
-        if (current->neighbours[next_dir] == nullptr || current->neighbours[next_dir]->isBnd())
-            break;
-        else current = current->neighbours[next_dir];
+        if (current->neighbours[next_dir] == nullptr || current->neighbours[next_dir]->isBnd()) {
+            if (inc(cd,1)%2) {
+                next_dir = inc(cd,1);
+                if (current->neighbours[next_dir] == nullptr || current->neighbours[next_dir]->isBnd())
+                    break;
+                /* skip one iteration */
+                k++;
+                cd = inc(cd,7); 
+            } else break;
+        }
+        current = current->neighbours[next_dir];
 
         /* update dir of new bucket */
         cd = inc(cd,7);
@@ -235,122 +144,8 @@ void Bucket::addBucket(int dir){ // to be called from corner
         current->neighbours[cd] = new_bucket; 
         new_bucket->neighbours[inc(cd, 4)] = current->self;
     }
-}
 
-void Bucket::newBucket(int dir){ // public function
 
-    if (dir<0 || dir>7) throw ("invalid direction in newBucket");
-    if (neighbours[dir] != nullptr) {
-        cout << "Neighbour already exists" << endl;
-        return;
-    }
-
-    // addBucket(dir);
-    // return;
-
-    auto diag = isCorner();
-    if (diag == 8) { // if root element, check if dir is diagonal
-        cout << "is root " << endl;
-        if (dir%2) addToCorner(dir);
-        else addToCorner(inc(dir,1));
-    } else if (diag == -1) { // if not a corner
-        auto bad = [this] (int i){
-            if (neighbours[i] == nullptr ) return 1;
-            if (neighbours[i]->isBnd()) return 1;
-            return 0;
-        };
-        // cout << "not a corner" << endl;
-        // throw("not a corner in newBucket, still to be implemented"); 
-        switch (dir)
-        {
-        case 1:
-            if (bad(0)) {
-                if (bad(2)) 
-                    throw runtime_error("no good neighbours in newBucket");
-                neighbours[2]->newBucket(0);
-                return;
-            }
-            neighbours[0]->newBucket(2);
-            return;
-            break;
-        case 3:
-            if (bad(4)) {
-                if (bad(2)) 
-                    throw runtime_error("no good neighbours in newBucket");
-                neighbours[2]->newBucket(4);
-                return;
-            }
-            neighbours[4]->newBucket(2);
-            return;
-            break;
-        case 5:
-            if (bad(0)) {
-                if (bad(6)) 
-                    throw runtime_error("no good neighbours in newBucket");
-                neighbours[6]->newBucket(4);
-                return;
-            }
-            neighbours[4]->newBucket(6);
-            return;
-            break;
-        case 7:
-            if (bad(0)) {
-                if (bad(6)) 
-                    throw runtime_error("no good neighbours in newBucket");
-                neighbours[6]->newBucket(0);
-                return;
-            }
-            neighbours[0]->newBucket(6);
-            return;
-            break;
-        default:
-            break;
-        }
-
-        if (dir%2) throw("dir must be even if not a corner");
-
-        /* search nearest corner and write it in 'corner' 
-           note that accessed neighbours cannot be nullptr
-        */
-        vector<int> to_go(6,0);
-        shared_ptr<Bucket> corner;
-        to_go[dir/2]++;
-        to_go[inc(dir,2)/2]++;
-        to_go[inc(dir,4)/2]--;
-        to_go[inc(dir,6)/2]--; 
-        to_go[4] = inc(dir,2); // last step
-        to_go[5] = dir; // original dir to add 
-        corner = neighbours[inc(dir,6)]->searchCorner(to_go); 
-        {
-            vector<int> to_go_tmp(6,0);
-            shared_ptr<Bucket> tmp;
-            to_go_tmp[dir/2]++;
-            to_go_tmp[inc(dir,6)/2]++; 
-            to_go_tmp[inc(dir,4)/2]--;
-            to_go_tmp[inc(dir,2)/2]--; 
-            to_go_tmp[4] = inc(dir,6); // last step
-            to_go_tmp[5] = dir; // original dir to add 
-            tmp = neighbours[inc(dir,2)]->searchCorner(to_go_tmp); 
-            if (dist(tmp) < dist(corner)) {
-                corner = tmp;
-                to_go = move(to_go_tmp);
-            }
-        }
-
-        int i,j; 
-        getIndex(dir, i, j);
-        
-        auto d = (i-corner->i())*(i-corner->i()) + (j-corner->j())*(j-corner->j());
-        while (d > 1) {
-            corner->addToCorner(corner->isCorner());
-            corner = corner->searchCorner(to_go);
-            d = (i-corner->i())*(i-corner->i()) + (j-corner->j())*(j-corner->j());
-        }
-        corner->addToCorner(corner->isCorner());
- 
-    } else {
-        addToCorner(diag);
-    }
 }
 
 shared_ptr<Bucket> Bucket::operator() (int i, int j) const{
@@ -397,7 +192,7 @@ shared_ptr<Bucket> Bucket::operator() (int i, int j) const{
             /* while insted of if, see notes for explanation*/
             while (next == nullptr) { 
                 if (self == root) {
-                    current->newBucket(k);
+                    current->addBucket(k);
                     next = current->neighbours[k];
                 } else {
                     return (*root)(i,j);
@@ -426,18 +221,25 @@ void Bucket::test() {
     // self->printList();
     // shared_ptr<Bucket> a = (*self)(9,8);
     shared_ptr<Bucket> a = (*self)(0,0);
-    // a = (*a)(N-1,0);
-    // a = (*a)(N-1,N-1);
+    a = (*a)(N-1,0);
+    a = (*a)(N-1,N-1);
     // a = (*a)(0,N-1);
-    // a = (*a)(0,2);
+    // a = (*a)(5,5); 
+    a = (*a)(N-1,1);
+    a = (*a)(0,7);
+    a = (*a)(1,N-2);
+    a = (*a)(3,1);
+    a = (*a)(4,0);
 
-    // a->printNeighbours();
 
-    a = self;
-    (*a)(0,N-1);
-    (*a)(N-1,0);
+
+    a->printNeighbours();
+
+    // a = self;
+    // (*a)(0,N-1);
+    // (*a)(N-1,0);
     // (*a)(N/2,0);
-    (*a)(N-1,N-1);
+    // (*a)(N-1,N-1);
 
     // a = (*a)(N/2,N/2);
     // a = (*a)(0,N/2);

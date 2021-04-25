@@ -61,6 +61,8 @@ public:
     inline bool isBnd( ) {return is_bnd;};
     void getIndex(int dir, int& i, int& j);
 
+    void newBucket(int dir);
+    int isCorner();
     inline int dist(const shared_ptr<Bucket> other) const; 
     
     /*** get fuctions ***/
@@ -96,7 +98,10 @@ private:
     bool is_bnd = 1;
 
     /*** private methods ***/
+    void addToCorner(int diag);
     void addBucket(int dir);
+    shared_ptr<Bucket> searchCorner(vector<int>& to_go);
+
     void addToList();
 };
 
