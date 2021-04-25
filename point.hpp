@@ -7,44 +7,44 @@
 # include <algorithm>
 using namespace std;
 
-class PointBase {
+class Point {
 public:
-    PointBase() {};
-    PointBase(double p0, double p1): x(p0), y(p1) {};
-    PointBase(const PointBase& p): x(p.x), y(p.y) {};
+    Point() {};
+    Point(double p0, double p1): x(p0), y(p1) {};
+    Point(const Point& p): x(p.x), y(p.y) {};
 
     double x,y; 
-    friend std::ostream &operator<<(std::ostream &os, const PointBase &p);
+    friend std::ostream &operator<<(std::ostream &os, const Point &p);
 
-    bool operator== (const PointBase& other) const;
-    bool operator!= (const PointBase& other) const;
+    bool operator== (const Point& other) const;
+    bool operator!= (const Point& other) const;
     /* lexicographic order */
-    bool operator< (const PointBase& other) const;
-    bool operator<= (const PointBase& other) const;
-    bool operator> (const PointBase& other) const;
-    bool operator>= (const PointBase& other) const;
+    bool operator< (const Point& other) const;
+    bool operator<= (const Point& other) const;
+    bool operator> (const Point& other) const;
+    bool operator>= (const Point& other) const;
     
     /* Arithmetic operators here because of templates*/
     template <typename T>
-    PointBase& operator-= (const T& other){
+    Point& operator-= (const T& other){
         x -= other.x;
         y -= other.y;
         return *this;
     }
     template <typename T>
-    PointBase& operator+= (const T& other){
+    Point& operator+= (const T& other){
         x += other.x;
         y += other.y;
         return *this;
     }
     template <typename T>
-    PointBase& operator/= (const T f){
+    Point& operator/= (const T f){
         x /= f;
         y /= f;
         return *this;
     }
     template <typename T>
-    PointBase& operator*= (const T f){
+    Point& operator*= (const T f){
         x *= f;
         y *= f;
         return *this;

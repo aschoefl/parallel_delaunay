@@ -2,11 +2,11 @@
 
 int Bucket::N = 0;
 shared_ptr<Bucket> Bucket::bb = move(shared_ptr<Bucket>((Bucket*) new BoundaryBucket()));
-list<PointBase> Bucket::buckets;
+list<Point> Bucket::buckets;
 shared_ptr<Bucket> Bucket::root = nullptr;
 
 void Bucket::addToList(){
-    PointBase p(ind_i, ind_j);
+    Point p(ind_i, ind_j);
     if (!(find(buckets.begin(), buckets.end(), p) != buckets.end()))
         buckets.push_back(move(p));
 }
@@ -210,16 +210,7 @@ shared_ptr<Bucket> Bucket::operator() (int i, int j) const{
 
 /* test function to be deleted in the end */
 void Bucket::test() { 
-    // shared_ptr<Bucket> current = self;
-    // current->newBucket(6);
-    // while (current->neighbours[6] != nullptr) {
-    //     if (current->neighbours[6]->isBnd()) break;
-    //     current = current->neighbours[6];
-    //     current->newBucket(6);
-    //     current->neighbours[6]->isBnd();
-    // }
-    // self->printList();
-    // shared_ptr<Bucket> a = (*self)(9,8);
+
     shared_ptr<Bucket> a = (*self)(0,0);
     a = (*a)(N-1,0);
     a = (*a)(N-1,N-1);
@@ -231,33 +222,8 @@ void Bucket::test() {
     a = (*a)(3,1);
     a = (*a)(4,0);
 
-
-
     a->printNeighbours();
-
-    // a = self;
-    // (*a)(0,N-1);
-    // (*a)(N-1,0);
-    // (*a)(N/2,0);
-    // (*a)(N-1,N-1);
-
-    // a = (*a)(N/2,N/2);
-    // a = (*a)(0,N/2);
-
     a->printList();
 
-
-    // a->printNeighbours();
-
-    // auto b = (*a)(3,3);
-    // b->printNeighbours();
-
-
-    // current = neighbours[6];
-    // current = current->neighbours[6];
-    // current = current->neighbours[6];
-    // current = current->neighbours[0];
-
-    // current->newBucket(1);
 }
 

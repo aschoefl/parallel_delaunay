@@ -47,7 +47,7 @@ public:
     }
     static shared_ptr<Bucket> root;
     static shared_ptr<Bucket> bb;
-    static list<PointBase> buckets; // just for debugging
+    static list<Point> buckets; // just for debugging
 
     shared_ptr<Bucket> operator() (int i, int j) const;
 
@@ -66,10 +66,10 @@ public:
     /*** get fuctions ***/
     int i() const { return ind_i;}
     int j() const { return ind_j;}
+    int getN() {return N;};
     /* returned by value, to be compatible with set function */
     vector<double> getCoordinates() const { return coordinates; };
     void printList();
-    int getN() {return N;};
 
 /* TODO: make that nicer, not safe ? */
 protected:

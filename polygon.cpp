@@ -20,15 +20,15 @@ void circumcenter(T& ret, const T& a, const T& b, const T& c) {
 
 // add points in counter clockwise order
 void Polygon::addPoint(double p0, double p1) {
-    Point p(this, p0, p1);
+    PointPoly p(this, p0, p1);
     auto pos = std::find_if(points.begin(), points.end(), [p](auto s) {
         return s < p;
     });
     points.insert(pos, move(p));
 }
 
-void Polygon::addPoint(const PointBase& pin) {
-    Point p(this, pin);
+void Polygon::addPoint(const Point& pin) {
+    PointPoly p(this, pin);
     auto pos = std::find_if(points.begin(), points.end(), [p](auto s) {
         return s < p;
     });
@@ -37,7 +37,7 @@ void Polygon::addPoint(const PointBase& pin) {
 
 void Polygon::calculateVeroni(void) {
     if (points.size() < 2) return;
-    Point cc(this);
+    PointPoly cc(this);
 
     for(auto it = points.begin(); it!=points.end()-1; it++){
         auto next = it+1;
@@ -59,9 +59,9 @@ std::ostream &operator<<(std::ostream &os, const Polygon &poly) {
     return os;
 }
 
-bool Polygon::Point::operator> (const Polygon::Point& other) const {
-    Point a = *this-poly->c;
-    Point b = other-poly->c;
+bool Polygon::PointPoly::operator> (const Polygon::PointPoly& other) const {
+    PointPoly a = *this-poly->c;
+    PointPoly b = other-poly->c;
 
     // to have a beginning (at angle == 0 in unit circle)
     if (a.y>=0 && b.y<0) return 1;
@@ -82,17 +82,17 @@ bool Polygon::Point::operator> (const Polygon::Point& other) const {
     return 0;
 }
 
-bool Polygon::Point::operator>= (const Polygon::Point& other) const {
+bool Polygon::PointPoly::operator>= (const Polygon::PointPoly& other) const {
     if (*this>other || *this==other) return 1;
     return 0;
 }
 
-bool Polygon::Point::operator< (const Polygon::Point& other) const {
+bool Polygon::PointPoly::operator< (const Polygon::PointPoly& other) const {
     if (!(*this>=other)) return 1;
     return 0;
 }
 
-bool Polygon::Point::operator<= (const Polygon::Point& other) const {
+bool Polygon::PointPoly::operator<= (const Polygon::PointPoly& other) const {
     if (!(*this>other)) return 1;
     return 0;
 }

@@ -47,12 +47,12 @@ int main ( int argc, char *argv[] ) {
 
     exit(0);
 
-    vector<PointBase> A[N][N];
+    vector<Point> A[N][N];
 
     /* generate uniform example mesh */
     for(int i=0; i<N; i++){
         for(int j=0; j<N; j++) {
-            A[i][j].push_back(PointBase((double)i/(double)N+1.0/(double)N/2.0, (double)j/(double)N+1.0/(double)N/2.0));
+            A[i][j].push_back(Point((double)i/(double)N+1.0/(double)N/2.0, (double)j/(double)N+1.0/(double)N/2.0));
             // cout << "A["<<i<<","<<j<<"] = ";
             // for (auto tmp : A[i][j])
             //     cout << tmp;
@@ -60,8 +60,8 @@ int main ( int argc, char *argv[] ) {
         }
     }
 
-    // PointBase a(0,3);
-    // PointBase b(1,3);
+    // Point a(0,3);
+    // Point b(1,3);
     // cout << (a+b)/2 << endl;
 
     /* choose one point in middle for testing
@@ -72,7 +72,7 @@ int main ( int argc, char *argv[] ) {
     int j = N/2;
     Polygon poly(A[i][j][0]);
 
-    auto add = [&poly](const PointBase& p) {poly.addPoint(p);};
+    auto add = [&poly](const Point& p) {poly.addPoint(p);};
     vector<int> dir = {-1,1};
     for (int dir_i : dir) {
         for (int dir_j : dir) {
@@ -87,7 +87,7 @@ int main ( int argc, char *argv[] ) {
                 /* add ghost point if out of bounds */
                 if (i+incr*dir_i==N || i+incr*dir_i==0 || j+incr*dir_j==N || i+incr*dir_j==0) {
                     stop = 1;
-                    add(PointBase(max(dir_i, 0), max(dir_j,0)));
+                    add(Point(max(dir_i, 0), max(dir_j,0)));
                 }
                 /* add points (see sketch) and go in diagonal direction if cell is empty*/
                 else if (!A[i+incr*dir_i][j+incr*dir_j].empty()) {
