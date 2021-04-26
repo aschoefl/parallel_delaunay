@@ -3,16 +3,21 @@
 
 
 # include <mpi.h>
+# include <random>
 # include <vector>
 # include <iterator>
 # include <iostream>
 # include <algorithm>
 # include <memory>
 # include <list>
-#include <fstream>
+# include <fstream>
+# include <ctime>
 # include "point.hpp"
 
 using namespace std;
+
+
+# define MAX_PNTS 10 // maximal points per bucket
 
 /*
 NOTES
@@ -46,16 +51,14 @@ public:
             int i = (r%P)*(N/P)+(N/P)/2;
             int j = (r/P)*(N/P)+(N/P)/2;
             cout << "create root with indices: ("<<i<<", "<<j<<")"<< endl;
+            srand(r*static_cast<unsigned int>(time(nullptr))); // set different seed for each processor
             Bucket* tmp = new Bucket(i,j);
             root = tmp->self;
             return tmp->self;
         } 
         cout << "root already exists" << endl;
         return root;
-    }
-    int r() const {
-        return (ind_j)/(N/P)*P + (ind_i)/(N/P);
-    }
+    };
     static shared_ptr<Bucket> root;
     static shared_ptr<Bucket> bb;
     static list<Point> buckets; // just for debugging
@@ -64,9 +67,6 @@ public:
 
     void test(); //just for testing new functions
 
-    void setCoordinates(vector<double>&& vec) {
-        coordinates = move(vec);
-    };
     inline void printNeighbours() const;
     /* don't just return false, because of downcasing*/ 
     inline bool isBnd( ) {return is_bnd;};
@@ -77,10 +77,9 @@ public:
     /*** get fuctions ***/
     int i() const { return ind_i;}
     int j() const { return ind_j;}
-    // int N() const {return N;};
-
-    /* returned by value, to be compatible with set function */
-    vector<double> getCoordinates() const { return coordinates; };
+    int r() const {return (ind_j)/(N/P)*P + (ind_i)/(N/P);}
+    // TODO: think about if return by value really is a good idea...
+    vector<Point> getPoints();
     void printList();
 
 /* TODO: make that nicer, not safe ? */
@@ -93,24 +92,31 @@ private:
         self = move(shared_ptr<Bucket>(this));
         is_bnd = 0;
         addToList();
-        // cout << "in ctor" << endl;
     };
     Bucket(const Bucket&); // deactivate copy-ctor
     Bucket& operator=(const Bucket&); // deactivate assign
     
     /*** private members ***/ 
     shared_ptr<Bucket> self; 
-    /* global coordinates of points in order {x1,y1,..,xk,yk} */
+    /* global coordinates of points in order {cnt,x1,y1,..,xk,yk} 
+        where cnt is the amount of points in the vector
+    */
     vector<double> coordinates; 
+    /* same points as point vector */
+    vector<Point> points;
+
     int ind_i, ind_j; // global indices
     vector<shared_ptr<Bucket>> neighbours = {nullptr,nullptr,nullptr,nullptr,
         nullptr,nullptr,nullptr,nullptr }; 
     bool is_bnd = 1;
-    vector<Point> points;
 
     /*** private methods ***/
+    void addPoint(double x, double y);
     void addBucket(int dir);
     void addToList();
+    void fillCoordinates();
+    /* private because it returns reference */
+    vector<double>& getCoordinates();
 };
 
 class BoundaryBucket: private Bucket {

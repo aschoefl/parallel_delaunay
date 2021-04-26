@@ -208,6 +208,63 @@ shared_ptr<Bucket> Bucket::operator() (int i, int j) const{
     return current;
 }
 
+void Bucket::addPoint(double x, double y) {
+    Point pnt(x,y);
+    auto pos = find_if(points.begin(), points.end(), [pnt](auto s) {
+        return s < pnt;
+    });
+    points.insert(pos, move(pnt));
+}
+
+void Bucket::fillCoordinates(){
+
+    if (r() != root->r()) {
+        // TODO: GET DATA FROM RIGHT PROCESSOR
+        throw runtime_error("get from other processer not yet implemented");
+        return;
+    }
+
+    /* number of points in this bucket 
+       pfusch distribution  */
+    int cnt = rand() % (MAX_PNTS+1);
+    for (auto i=0; i<5; i++)
+        cnt = min(cnt, rand() % (MAX_PNTS+1));
+    
+    auto xmin = i()/static_cast<double>(N);
+    auto xmax = (i()+1)/static_cast<double>(N);
+    auto ymin = j()/static_cast<double>(N);
+    auto ymax = (j()+1)/static_cast<double>(N);
+    coordinates.push_back(cnt); // set amount of points 
+
+    cout << "cnt " << cnt << endl;
+
+    for (auto i=0; i<cnt; i++){
+        auto x = xmin + static_cast<double>(rand())/( static_cast<double>(RAND_MAX/(xmax-xmin)));
+        auto y = ymin + static_cast<double>(rand())/( static_cast<double>(RAND_MAX/(ymax-ymin)));
+        addPoint(x,y);
+        coordinates.push_back(x);
+        coordinates.push_back(y);
+    }
+
+}
+vector<double>& Bucket::getCoordinates() {
+    /* get or gerenate data if not available */
+    if (coordinates.empty())
+        fillCoordinates();
+
+    return coordinates;
+}
+
+vector<Point> Bucket::getPoints() {
+    /* get or gerenate data if not available, 
+    check if coordinates are empty because points can
+    remain empty if no point in bucket */
+    if (coordinates.empty())
+        fillCoordinates();
+
+    return points;
+}
+
 
 /* test function to be deleted in the end */
 void Bucket::test() { 
@@ -223,10 +280,20 @@ void Bucket::test() {
     a = (*a)(3,1);
     a = (*a)(7,7);
 
-    cout << "r: " << a->r() << endl;
+    // cout << "r: " << a->r() << endl;
+    vector<Point> pnts = move(getPoints());
+    cout << "points: ";
+    for (auto p: pnts)
+        cout << p << " ";
+    cout << endl;
 
-    a->printNeighbours();
+    cout << "coordinates: ";
+    for (auto p: coordinates)
+        cout << p << " ";
+    cout << endl;
+
+    // a->printNeighbours();
     a->printList();
-
+    
 }
 

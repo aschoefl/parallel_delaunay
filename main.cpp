@@ -26,7 +26,7 @@ int main ( int argc, char *argv[] ) {
     // MPI_Comm_rank(MPI_COMM_WORLD, &r);
 
     R = 25;
-    r = 11;
+    r = 0;
 
     auto P = sqrt(R);
     if (P-int(P) == 0.) Bucket::P = int(P);
@@ -34,7 +34,7 @@ int main ( int argc, char *argv[] ) {
 
     shared_ptr<Bucket> root = Bucket::createRoot(r);
     root->test();
-    
+
     // MPI_Finalize();
     exit(0);
 }
