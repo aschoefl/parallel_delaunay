@@ -67,7 +67,7 @@ public:
     };
     static shared_ptr<Bucket> root;
     static shared_ptr<Bucket> bb;
-    static list<Point> buckets; // just for debugging
+    static list<shared_ptr<Bucket>> buckets; // just for debugging
 
     shared_ptr<Bucket> operator() (int i, int j) const;
 
@@ -124,6 +124,8 @@ private:
     void addToList();
     void fillCoordinates();
     void sendCoordinates(int destination, int no_bucket);
+    void calculateDelauney();
+
 };
 
 class BoundaryBucket: private Bucket {

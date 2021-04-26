@@ -1,24 +1,28 @@
 # include "bucket.hpp"
 
 shared_ptr<Bucket> Bucket::bb = move(shared_ptr<Bucket>((Bucket*) new BoundaryBucket()));
-list<Point> Bucket::buckets;
+list<shared_ptr<Bucket>> Bucket::buckets;
 shared_ptr<Bucket> Bucket::root = nullptr;
 int Bucket::P=0 , Bucket::N=0;
 double Bucket::buffer[MAX_PNTS*2+1];
 
 
 void Bucket::addToList(){
-    Point p(ind_i, ind_j);
-    if (!(find(buckets.begin(), buckets.end(), p) != buckets.end()))
-        buckets.push_back(move(p));
+    if (!(find(buckets.begin(), buckets.end(), self) != buckets.end()))
+        buckets.push_back(self);
+    // Point p(ind_i, ind_j);
+    // if (!(find(buckets.begin(), buckets.end(), p) != buckets.end()))
+    //     buckets.push_back(move(p));
 }
 
 void Bucket::printList(){
-    ofstream myfile ("points.txt");
+    ofstream myfile ("points"+to_string(r())+".txt");
     if (myfile.is_open()) {
         myfile << "[";
-        for (auto p : buckets) 
-            myfile << p << ", ";
+        for (auto b : buckets) {
+            for (auto p: b->points)
+                myfile << p << ", ";
+        }
         myfile << "]" << endl;
         myfile.close();
     }
@@ -87,6 +91,8 @@ void Bucket::addBucket(int dir){ // to be called from corner
     /* work around the memory leaks */
     shared_ptr<Bucket> new_bucket = (new Bucket(i,j))->self;
 
+    // just for testing, but not working
+    // new_bucket->fillCoordinates();
 
     for (auto k = 0; k<8; k++){ 
         /* assign boundary buckets */
@@ -218,11 +224,19 @@ void Bucket::addPoint(double x, double y) {
 
 void Bucket::fillCoordinates(){
 
+    if (!(coordinates.empty())) return;
+
     if (r() != root->r()) {
         /* get data from right processor */
         int no_bucket = i()*N+j();
         MPI_Send(&no_bucket,1,MPI_INT,r(),TAG_NOTIFY,MPI_COMM_WORLD);
         MPI_Recv(buffer,MAX_PNTS,MPI_DOUBLE,r(),TAG_DATA,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+
+        // MPI_Request req;
+        // int no_bucket = i()*N+j();
+        // MPI_Isend(&no_bucket,1,MPI_INT,r(),TAG_NOTIFY,MPI_COMM_WORLD, &req);
+        // MPI_Recv(buffer,MAX_PNTS,MPI_DOUBLE,r(),TAG_DATA,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+        // MPI_Request_free(&req);
 
         coordinates.push_back(buffer[0]);
         for (auto k=0; k<2*buffer[0]; k+=2) {
@@ -231,14 +245,17 @@ void Bucket::fillCoordinates(){
             addPoint(buffer[k+1],buffer[k+2]);
         }
         // throw runtime_error("get from other processer not yet implemented");
+        
+        cout << "filled coordinates of (" << i()<<", "<<j()<<
+        ") on processor "<<r()<<endl;
         return;
     }
 
     /* number of points in this bucket 
        pfusch distribution  */
     int cnt = rand() % (MAX_PNTS+1);
-    for (auto i=0; i<5; i++)
-        cnt = min(cnt, rand() % (MAX_PNTS+1));
+    for (auto i=0; i<10; i++)
+        cnt = max(min(cnt, rand() % (MAX_PNTS+1)),1);
     
     auto xmin = i()/static_cast<double>(N);
     auto xmax = (i()+1)/static_cast<double>(N);
@@ -246,8 +263,7 @@ void Bucket::fillCoordinates(){
     auto ymax = (j()+1)/static_cast<double>(N);
     coordinates.push_back(cnt); // set amount of points 
 
-    // cout << "cnt " << cnt << endl;
-
+    /* assign random coordinates in right bucket */
     for (auto i=0; i<cnt; i++){
         auto x = xmin + static_cast<double>(rand())/( static_cast<double>(RAND_MAX/(xmax-xmin)));
         auto y = ymin + static_cast<double>(rand())/( static_cast<double>(RAND_MAX/(ymax-ymin)));
@@ -255,6 +271,9 @@ void Bucket::fillCoordinates(){
         coordinates.push_back(x);
         coordinates.push_back(y);
     }
+
+    // cout << "filled coordinates of (" << i()<<", "<<j()<<
+    // ") on processor "<<r()<<endl;
 
 }
 
@@ -332,11 +351,10 @@ void Bucket::doSomething() {
         MPI_Waitsome( size, requests, &ndone, indices, statuses ); 
         for (auto i=0; i<ndone; i++) { 
             auto j = indices[i]; 
-            // printf( "Msg from %d with tag %d and value %d\n",  
-            //         statuses[i].MPI_SOURCE,  
-            //         statuses[i].MPI_TAG,
-            //         buf[j]); 
-
+            printf( "Msg from %d with tag %d and value %d\n",  
+                    statuses[i].MPI_SOURCE,  
+                    statuses[i].MPI_TAG,
+                    buf[j]); 
             if (statuses[i].MPI_SOURCE != r())
                 sendCoordinates(statuses[i].MPI_SOURCE, buf[j]);
             // else { /* stop if receive msg from oneself */
@@ -348,46 +366,46 @@ void Bucket::doSomething() {
         } 
     } 
 }
+void Bucket::calculateDelauney(){
+
+}
 /* test function to be deleted in the end */
 void Bucket::test() { 
 
-    shared_ptr<Bucket> a = (*self)(0,0);
-    a = (*a)(N-1,0);
-    // a = (*a)(N-1,N-1);
-    // // a = (*a)(0,N-1);
-    // // a = (*a)(5,5); 
+    shared_ptr<Bucket> a = self;
     a = (*a)(5,5);
+    // cout << "here " << endl;
+    // a = (*a)(min(i()+5, N-1),min(i()+5, N-1));  // this is a problem
+    // a = (*a)(N-1,N-1); 
+    // a = (*a)(5,5); 
+    // a = (*a)(5,5);
     // a = (*a)(0,7);
     // a = (*a)(1,N-2);
     // a = (*a)(3,1);
     // a = (*a)(7,7);
 
-
-
-    // 
-    // vector<int> 
-
-    // if (r() == 1) {
-    //     MPI_Send(&tmp,1,MPI_INT,0,TAG_NOTIFY,MPI_COMM_WORLD);
-    //     MPI_Recv(rcv,2,MPI_INT,0,TAG_DATA,MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-    //     // MPI_Send(rcv,2,MPI_INT,0,10,MPI_COMM_WORLD);
-    //     // MPI_Recv(rcv,2,MPI_INT,0,10,MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    //     cout << " here " << rcv[0] << endl;
-    // }
-
-    // if (r() != 0)
-    //     MPI_Send(tmp,1,MPI_INT,0,1,MPI_COMM_WORLD);
-    
-    // MPI_Send(tmp,1,MPI_INT,r(),5,MPI_COMM_WORLD);
+    // problem: deadlock somewhere
+    for (int ii =5;ii<N;ii++) {
+        for(int jj=5;jj<N;jj++) {
+            cout << r() << "in for" << endl;
+            a = (*a)(ii,jj);
+            a->getPoints();
+        }
+    }
 
     // cout << "r: " << a->r() << endl;
     vector<Point> pnts = move(a->getPoints());
-    cout << "points: ";
-    for (auto p: pnts)
-        cout << p << " ";
-    cout << endl;
+    // cout << "points on " << r() << " ";
+    // for (auto p: pnts)
+    //     cout << p << " ";
+    // cout << endl;
 
+    // int no_bucket = i()*N+j();
+    // MPI_Send(&no_bucket,1,MPI_INT,r(),TAG_NOTIFY,MPI_COMM_WORLD);
+
+
+    printList();
+    cout << "****** Proc " << r() << " finished ******" << endl;
     // cout << "coordinates: ";
     // for (auto p: coordinates)
     //     cout << p << " ";
