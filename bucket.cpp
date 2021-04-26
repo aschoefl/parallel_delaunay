@@ -1,9 +1,10 @@
 # include "bucket.hpp"
 
-int Bucket::N = 0;
 shared_ptr<Bucket> Bucket::bb = move(shared_ptr<Bucket>((Bucket*) new BoundaryBucket()));
 list<Point> Bucket::buckets;
 shared_ptr<Bucket> Bucket::root = nullptr;
+int Bucket::P=0 , Bucket::N=0;
+MPI_Status Bucket::status;
 
 void Bucket::addToList(){
     Point p(ind_i, ind_j);
@@ -220,7 +221,9 @@ void Bucket::test() {
     a = (*a)(0,7);
     a = (*a)(1,N-2);
     a = (*a)(3,1);
-    a = (*a)(4,0);
+    a = (*a)(7,7);
+
+    cout << "r: " << a->r() << endl;
 
     a->printNeighbours();
     a->printList();

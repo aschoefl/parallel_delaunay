@@ -1,6 +1,8 @@
 #ifndef BUCKET_HPP
 #define BUCKET_HPP
 
+
+# include <mpi.h>
 # include <vector>
 # include <iterator>
 # include <iostream>
@@ -9,6 +11,7 @@
 # include <list>
 #include <fstream>
 # include "point.hpp"
+
 using namespace std;
 
 /*
@@ -32,18 +35,26 @@ class  Bucket {
 
 public:
     static int N; // global amount of buckets is N*N
+    static MPI_Status status; 
+    static int P; // amount of processor R = P*P
     /* make sure there is only one root 
     achtung pfusch
     */
-    static shared_ptr<Bucket> createRoot(int N_, int i, int j){
+    static shared_ptr<Bucket> createRoot(int r){
         if (root == nullptr) {
+            if (N%P) throw runtime_error("N must be divisible by P");
+            int i = (r%P)*(N/P)+(N/P)/2;
+            int j = (r/P)*(N/P)+(N/P)/2;
+            cout << "create root with indices: ("<<i<<", "<<j<<")"<< endl;
             Bucket* tmp = new Bucket(i,j);
-            tmp->N = N_; 
             root = tmp->self;
             return tmp->self;
         } 
         cout << "root already exists" << endl;
         return root;
+    }
+    int r() const {
+        return (ind_j)/(N/P)*P + (ind_i)/(N/P);
     }
     static shared_ptr<Bucket> root;
     static shared_ptr<Bucket> bb;
@@ -66,7 +77,8 @@ public:
     /*** get fuctions ***/
     int i() const { return ind_i;}
     int j() const { return ind_j;}
-    int getN() {return N;};
+    // int N() const {return N;};
+
     /* returned by value, to be compatible with set function */
     vector<double> getCoordinates() const { return coordinates; };
     void printList();
@@ -94,6 +106,7 @@ private:
     vector<shared_ptr<Bucket>> neighbours = {nullptr,nullptr,nullptr,nullptr,
         nullptr,nullptr,nullptr,nullptr }; 
     bool is_bnd = 1;
+    vector<Point> points;
 
     /*** private methods ***/
     void addBucket(int dir);
