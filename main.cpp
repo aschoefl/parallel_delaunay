@@ -17,25 +17,23 @@ using namespace std;
 int main ( int argc, char *argv[] ) {
 
     /* initiate variables */
-    Bucket::N = 10;
+    Bucket::N = 20;
     int r, R;
 
     /* Initialize MPI */
-    // MPI_Init(&argc, &argv);
-    // MPI_Comm_size(MPI_COMM_WORLD, &R);
-    // MPI_Comm_rank(MPI_COMM_WORLD, &r);
-
-    R = 25;
-    r = 0;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &R);
+    MPI_Comm_rank(MPI_COMM_WORLD, &r);
 
     auto P = sqrt(R);
     if (P-int(P) == 0.) Bucket::P = int(P);
     else throw runtime_error("sqrt of amount of processors must be int");
 
     shared_ptr<Bucket> root = Bucket::createRoot(r);
-    root->test();
+    root->doSomething();
+    // root->test();
 
-    // MPI_Finalize();
+    MPI_Finalize();
     exit(0);
 }
 

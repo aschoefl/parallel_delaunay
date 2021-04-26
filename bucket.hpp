@@ -18,7 +18,9 @@ using namespace std;
 
 
 # define MAX_PNTS 10 // maximal points per bucket
-
+# define MAX_PROC 500
+# define TAG_NOTIFY 42
+# define TAG_DATA 1
 /*
 NOTES
 -----
@@ -40,18 +42,22 @@ class  Bucket {
 
 public:
     static int N; // global amount of buckets is N*N
-    static MPI_Status status; 
     static int P; // amount of processor R = P*P
+    /* reveive buffer for MPI */
+    static double buffer[MAX_PNTS*2+1];
     /* make sure there is only one root 
     achtung pfusch
     */
     static shared_ptr<Bucket> createRoot(int r){
         if (root == nullptr) {
             if (N%P) throw runtime_error("N must be divisible by P");
+            if (P*P > MAX_PROC) 
+                throw runtime_error("Maximal number of processors exceeded");
             int i = (r%P)*(N/P)+(N/P)/2;
             int j = (r/P)*(N/P)+(N/P)/2;
             cout << "create root with indices: ("<<i<<", "<<j<<")"<< endl;
-            srand(r*static_cast<unsigned int>(time(nullptr))); // set different seed for each processor
+            // srand(r*static_cast<unsigned int>(time(nullptr))); // set different seed for each processor
+            srand(r*42); // set different seed for each processor
             Bucket* tmp = new Bucket(i,j);
             root = tmp->self;
             return tmp->self;
@@ -81,6 +87,7 @@ public:
     // TODO: think about if return by value really is a good idea...
     vector<Point> getPoints();
     void printList();
+    void doSomething();
 
 /* TODO: make that nicer, not safe ? */
 protected:
@@ -109,14 +116,14 @@ private:
     vector<shared_ptr<Bucket>> neighbours = {nullptr,nullptr,nullptr,nullptr,
         nullptr,nullptr,nullptr,nullptr }; 
     bool is_bnd = 1;
+    bool running = 0;
 
     /*** private methods ***/
     void addPoint(double x, double y);
     void addBucket(int dir);
     void addToList();
     void fillCoordinates();
-    /* private because it returns reference */
-    vector<double>& getCoordinates();
+    void sendCoordinates(int destination, int no_bucket);
 };
 
 class BoundaryBucket: private Bucket {
