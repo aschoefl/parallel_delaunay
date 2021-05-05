@@ -13,6 +13,7 @@
 # include <fstream>
 # include <ctime>
 # include "point.hpp"
+# include "polygon.hpp"
 
 using namespace std;
 
@@ -76,7 +77,8 @@ public:
     inline void printNeighbours() const;
     /* don't just return false, because of downcasing*/ 
     inline bool isBnd( ) {return is_bnd;};
-    void getIndex(int dir, int& i, int& j);
+    void getIndex(int const dir, int& i, int& j);
+    // void getIndex(Point const p, int& i, int& j);
 
     inline int dist(const shared_ptr<Bucket> other) const; 
     

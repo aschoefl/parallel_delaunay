@@ -69,6 +69,11 @@ void Bucket::getIndex(int const dir, int& i, int& j){
     if (2>dir || dir>6) i++;
 }
 
+// void Bucket::getIndex(Point const p, int& i, int& j){
+//     i = p.x*N;
+//     j = p.y*N;
+// }
+
 void Bucket::addBucket(int dir){ // to be called from corner
 
     if (dir<0 || dir>7) throw ("invalid direction in addBucket");
@@ -356,10 +361,11 @@ void Bucket::doSomething() {
     bool startup = true;
     int step = 0;
     while(running) { 
-        // if (startup) {
-            test();
-            // startup = false;
-        // }
+        if (startup) {
+            // test();
+            calculateDelauney();
+            startup = false;
+        }
         MPI_Waitsome( size, requests, &ndone, indices, statuses ); 
         for (auto i=0; i<ndone; i++) { 
             auto j = indices[i]; 
@@ -376,17 +382,80 @@ void Bucket::doSomething() {
             MPI_Irecv( buf+j, 1, MPI_INT, j, 
                     TAG_NOTIFY, MPI_COMM_WORLD, &requests[j]); 
 
-            // if (open_request) {
-            //     open_request = false;
-            //     goto resume;
-            //     request:
-            //     open_request = true;
-            // }
         } 
     } 
 }
-void Bucket::calculateDelauney(){
+void Bucket::calculateDelauney(){ // test on one processor
+    shared_ptr<Bucket> a = self;
+    vector<Point> pnts = move(a->getPoints());
+    if (pnts.empty()) throw runtime_error("test point list empty");
+    Point center = pnts.back();
 
+    // current (i,j)
+    auto ii = a->i();
+    auto jj = a->j();
+    Polygon poly(center);
+
+    vector<Point> tmp;
+    auto add = [&poly](const Point& p) {poly.addPoint(p);};
+    vector<int> dir = {-1,1};
+    for (int dir_i : dir) {
+        for (int dir_j : dir) {
+            auto incr = 1;
+            while (true){
+
+                // if (!(i+incr*dir_i==N || i+incr*dir_i==0 || j+incr*dir_j==N || i+incr*dir_j==0) ){
+                //     if (dir_i==-1 && dir_j==-1) A[i+incr*dir_i][j+incr*dir_j].pop_back();
+                // } // just for testing!
+
+                /* add ghost point if out of bounds */
+                if (ii+incr*dir_i==N || ii+incr*dir_i==0 || jj+incr*dir_j==N || jj+incr*dir_j==0) {
+                    // stop = 1;
+                    add(Point(max(dir_i, 0), max(dir_j,0)));
+                    break;
+                }
+
+                tmp = move((*a)(ii+incr*dir_i,jj+incr*dir_j)->getPoints());
+                /* add points (see sketch) and go in diagonal direction if cell is empty*/
+                if (!tmp.empty()) {
+                    for_each(tmp.begin(), tmp.end(), add);
+                    tmp.clear();
+                    break;
+                }
+                else incr++;
+            }
+        }
+    }
+    poly.calculateVeronoi();
+
+    cout << "poly: " << poly << endl;
+    poly.printPoints(to_string(0));
+
+
+    vector<Point> V;
+    // getIndex(pnt, pi, pj);
+
+    /* calculate Delauney neighbour candidates  */
+    for (auto it = 0; it < poly.veronoi.size(); ++it) {
+
+        auto rad = poly.radii[it];
+        auto pnt = poly.veronoi[it];
+        int n = rad*N+1;
+        int pi = pnt.x*N;
+        int pj = pnt.y*N; // indices of point 
+
+        for (auto di=-n; di<n+1; di++) 
+            for (auto dj=-n; dj<n+1; dj++) 
+                for (auto p : (*a)(pi+di, pj+dj)->getPoints()) 
+                    if (Point::dist(p,pnt) < rad) 
+                        V.push_back(p);
+                    
+    }
+
+    cout << "V: [ ";
+    for (const auto& p: V)
+        cout << p << " ";
+    cout << "]" << endl;
 }
 /* test function to be deleted in the end */
 void Bucket::test() { 
@@ -403,12 +472,12 @@ void Bucket::test() {
     // a = (*a)(3,1);
     // a = (*a)(7,7);
     // problem: deadlock somewhere
-    // for (int ii =5;ii<N;ii++) {
-    //     for(int jj=5;jj<N;jj++) {
-    //         a = (*a)(ii,jj);
-    //         a->getPoints();
-    //     }
-    // }
+    for (int ii =5;ii<N;ii++) {
+        for(int jj=5;jj<N;jj++) {
+            a = (*a)(ii,jj);
+            a->getPoints();
+        }
+    }
     // cout << "r: " << a->r() << endl;
     vector<Point> pnts = move(a->getPoints());
     // cout << "points on " << r() << " ";

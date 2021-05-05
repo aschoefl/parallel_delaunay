@@ -5,6 +5,8 @@
 # include <iterator>
 # include <iostream>
 # include <algorithm>
+# include <fstream>
+# include <cmath>
 # include "point.hpp"
 using namespace std;
 
@@ -16,8 +18,9 @@ public:
     void addPoint(double p0, double p1);
     void addPoint(const Point& pin);
 
-    void calculateVeroni(void);
+    void calculateVeronoi(void);
 
+    void printPoints(string no);
     friend std::ostream &operator<<(std::ostream &os, const Polygon &poly);
 
     class PointPoly: public Point {
@@ -36,9 +39,12 @@ public:
         Polygon* poly; 
     };
 
-private: 
+// private: 
     vector<PointPoly> points;
-    vector<PointPoly> veroni;
+    /* order of that vector is not to be changed*/ 
+    vector<PointPoly> veronoi; 
+    /* same order as veronoi */ 
+    vector<double> radii;
     PointPoly c;
 };
 

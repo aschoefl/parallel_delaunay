@@ -5,6 +5,7 @@
 # include <iterator>
 # include <iostream>
 # include <algorithm>
+# include <cmath>
 using namespace std;
 
 class Point {
@@ -15,6 +16,9 @@ public:
 
     double x,y; 
     friend std::ostream &operator<<(std::ostream &os, const Point &p);
+    static double dist (const Point& a, const Point& b) {
+        return sqrt((a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y));
+    }
 
     bool operator== (const Point& other) const;
     bool operator!= (const Point& other) const;
