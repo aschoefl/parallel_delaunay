@@ -35,7 +35,7 @@ void Polygon::addPoint(const Point& pin) {
     points.insert(pos, move(p));
 }
 
-void Polygon::calculateVeroni(void) {
+void Polygon::calculateVeroni(void) { // ToDo: spelling
     if (points.size() < 2) return;
     PointPoly cc(this);
 

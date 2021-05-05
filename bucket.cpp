@@ -6,6 +6,8 @@ shared_ptr<Bucket> Bucket::root = nullptr;
 int Bucket::P=0 , Bucket::N=0;
 double Bucket::buffer[MAX_PNTS*2+1];
 
+bool evenstep = false;
+
 
 void Bucket::addToList(){
     if (!(find(buckets.begin(), buckets.end(), self) != buckets.end()))
@@ -224,14 +226,19 @@ void Bucket::addPoint(double x, double y) {
 
 void Bucket::fillCoordinates(){
 
+    // MPI_Request req;
+
     if (!(coordinates.empty())) return;
 
-    if (r() != root->r()) {
+    if (true && r() != root->r()) {
+
         /* get data from right processor */
         int no_bucket = i()*N+j();
-        MPI_Send(&no_bucket,1,MPI_INT,r(),TAG_NOTIFY,MPI_COMM_WORLD);
+        // cout << "send from " << root->r() << " to " << r() << endl;
+        MPI_Send(&no_bucket,1,MPI_INT,r(),TAG_NOTIFY,MPI_COMM_WORLD);//, &request);
+        // goto request;
+        // resume:
         MPI_Recv(buffer,MAX_PNTS,MPI_DOUBLE,r(),TAG_DATA,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-
         // MPI_Request req;
         // int no_bucket = i()*N+j();
         // MPI_Isend(&no_bucket,1,MPI_INT,r(),TAG_NOTIFY,MPI_COMM_WORLD, &req);
@@ -246,8 +253,8 @@ void Bucket::fillCoordinates(){
         }
         // throw runtime_error("get from other processer not yet implemented");
         
-        cout << "filled coordinates of (" << i()<<", "<<j()<<
-        ") on processor "<<r()<<endl;
+        // cout << "filled coordinates of (" << i()<<", "<<j()<<
+        // ") on processor "<<r()<<endl;
         return;
     }
 
@@ -272,6 +279,7 @@ void Bucket::fillCoordinates(){
         coordinates.push_back(y);
     }
 
+    return; 
     // cout << "filled coordinates of (" << i()<<", "<<j()<<
     // ") on processor "<<r()<<endl;
 
@@ -288,12 +296,14 @@ void Bucket::sendCoordinates(int destination, int no_bucket) {
         return;
     }
 
+    
     /* get or gerenate data if not available */
     if (coordinates.empty())
         fillCoordinates();
 
     MPI_Send(coordinates.data(), MAX_PNTS, MPI_DOUBLE, destination, 
                 TAG_DATA, MPI_COMM_WORLD);
+
 }
 
 vector<Point> Bucket::getPoints() {
@@ -339,22 +349,24 @@ void Bucket::doSomething() {
     int         buf[MAX_PROC]; 
     auto size = P*P;
     int ndone;
+    bool open_request = false;
     for (auto i=0; i<size; i++)  
         MPI_Irecv( buf+i, 1, MPI_INT, i, 
                 TAG_NOTIFY, MPI_COMM_WORLD, &requests[i] ); 
     bool startup = true;
+    int step = 0;
     while(running) { 
-        if (startup) {
+        // if (startup) {
             test();
-            startup = false;
-        }
+            // startup = false;
+        // }
         MPI_Waitsome( size, requests, &ndone, indices, statuses ); 
         for (auto i=0; i<ndone; i++) { 
             auto j = indices[i]; 
-            printf( "Msg from %d with tag %d and value %d\n",  
-                    statuses[i].MPI_SOURCE,  
-                    statuses[i].MPI_TAG,
-                    buf[j]); 
+            // printf( "Msg from %d with tag %d and value %d\n",  
+            //         statuses[i].MPI_SOURCE,  
+            //         statuses[i].MPI_TAG,
+            //         buf[j]); 
             if (statuses[i].MPI_SOURCE != r())
                 sendCoordinates(statuses[i].MPI_SOURCE, buf[j]);
             // else { /* stop if receive msg from oneself */
@@ -363,6 +375,13 @@ void Bucket::doSomething() {
             // }
             MPI_Irecv( buf+j, 1, MPI_INT, j, 
                     TAG_NOTIFY, MPI_COMM_WORLD, &requests[j]); 
+
+            // if (open_request) {
+            //     open_request = false;
+            //     goto resume;
+            //     request:
+            //     open_request = true;
+            // }
         } 
     } 
 }
@@ -383,16 +402,13 @@ void Bucket::test() {
     // a = (*a)(1,N-2);
     // a = (*a)(3,1);
     // a = (*a)(7,7);
-
     // problem: deadlock somewhere
-    for (int ii =5;ii<N;ii++) {
-        for(int jj=5;jj<N;jj++) {
-            cout << r() << "in for" << endl;
-            a = (*a)(ii,jj);
-            a->getPoints();
-        }
-    }
-
+    // for (int ii =5;ii<N;ii++) {
+    //     for(int jj=5;jj<N;jj++) {
+    //         a = (*a)(ii,jj);
+    //         a->getPoints();
+    //     }
+    // }
     // cout << "r: " << a->r() << endl;
     vector<Point> pnts = move(a->getPoints());
     // cout << "points on " << r() << " ";
