@@ -396,6 +396,7 @@ void Bucket::calculateDelauney(){ // test on one processor
     auto jj = a->j();
     Polygon poly(center);
 
+    /* build polygon for first time */ 
     vector<Point> tmp;
     auto add = [&poly](const Point& p) {poly.addPoint(p);};
     vector<int> dir = {-1,1};
@@ -426,20 +427,20 @@ void Bucket::calculateDelauney(){ // test on one processor
             }
         }
     }
-    poly.calculateVeronoi();
+    poly.calculateVoronoi();
 
     cout << "poly: " << poly << endl;
     poly.printPoints(to_string(0));
 
-
-    vector<Point> V;
+    
     // getIndex(pnt, pi, pj);
 
     /* calculate Delauney neighbour candidates  */
-    for (auto it = 0; it < poly.veronoi.size(); ++it) {
+    poly.V.clear();
+    for (auto it = 0; it < poly.voronoi.size(); ++it) {
 
         auto rad = poly.radii[it];
-        auto pnt = poly.veronoi[it];
+        auto pnt = poly.voronoi[it];
         int n = rad*N+1;
         int pi = pnt.x*N;
         int pj = pnt.y*N; // indices of point 
@@ -448,14 +449,18 @@ void Bucket::calculateDelauney(){ // test on one processor
             for (auto dj=-n; dj<n+1; dj++) 
                 for (auto p : (*a)(pi+di, pj+dj)->getPoints()) 
                     if (Point::dist(p,pnt) < rad) 
-                        V.push_back(p);
+                        poly.V.push_back(p);
                     
     }
 
     cout << "V: [ ";
-    for (const auto& p: V)
+    for (const auto& p: poly.V)
         cout << p << " ";
     cout << "]" << endl;
+
+    /* Half plane intersection */
+
+
 }
 /* test function to be deleted in the end */
 void Bucket::test() { 

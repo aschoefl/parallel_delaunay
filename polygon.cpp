@@ -35,18 +35,18 @@ void Polygon::addPoint(const Point& pin) {
     points.insert(pos, move(p));
 }
 
-void Polygon::calculateVeronoi(void) { // ToDo: spelling
+void Polygon::calculateVoronoi(void) { // ToDo: spelling
     if (points.size() < 2) return;
     PointPoly cc(this); // to be circumcenter
 
     for(auto it = points.begin(); it!=points.end()-1; it++){
         auto next = it+1;
         circumcenter(cc, *it, *next, c);
-        veronoi.push_back(cc); // cc is copied
+        voronoi.push_back(cc); // cc is copied
         radii.push_back(Point::dist(cc,c));
     }
     circumcenter(cc, points.front(), points.back(), c);
-    veronoi.push_back(cc);
+    voronoi.push_back(cc);
     radii.push_back(Point::dist(cc,c));
 }
 
@@ -54,8 +54,8 @@ std::ostream &operator<<(std::ostream &os, const Polygon &poly) {
     os << "points: [ ";
     for (const auto& p: poly.points)
         os << p << " ";
-    os << "]" << endl << "veronoi: [ " ;
-    for (const auto& p: poly.veronoi)
+    os << "]" << endl << "voronoi: [ " ;
+    for (const auto& p: poly.voronoi)
         os << p << " ";
     os << "]" << endl << "radii: [ " ;
     for (const auto& p: poly.radii)
@@ -78,10 +78,10 @@ void Polygon::printPoints(string no) {
     }
     else cout << "Unable to open file";
 
-    myfile.open("veronoiPoints"+no+".txt");
+    myfile.open("voronoiPoints"+no+".txt");
     if (myfile.is_open()) {
         myfile << "[";
-        for (const auto& p: veronoi)
+        for (const auto& p: voronoi)
                 myfile << p << ", ";
         myfile << "]" << endl;
         myfile.close();

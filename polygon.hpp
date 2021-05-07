@@ -8,17 +8,20 @@
 # include <fstream>
 # include <cmath>
 # include "point.hpp"
+# include "bucket.hpp"
 using namespace std;
 
 class Polygon {
 public:
+
+    friend class Bucket;
     Polygon(double c0, double c1): c(this, c0,c1) {};
     Polygon(Point p): c(this, p) {};
 
     void addPoint(double p0, double p1);
     void addPoint(const Point& pin);
 
-    void calculateVeronoi(void);
+    void calculateVoronoi(void);
 
     void printPoints(string no);
     friend std::ostream &operator<<(std::ostream &os, const Polygon &poly);
@@ -39,12 +42,16 @@ public:
         Polygon* poly; 
     };
 
-// private: 
+private: 
+    /* points in polygon */ 
     vector<PointPoly> points;
-    /* order of that vector is not to be changed*/ 
-    vector<PointPoly> veronoi; 
-    /* same order as veronoi */ 
+    /* same order as polygon pnts, order is not to be changed*/ 
+    vector<PointPoly> voronoi; 
+    /* same order as polygon pnts, order is not to be changed*/ 
     vector<double> radii;
+    /* Dealauney Candidates*/ 
+    vector<Point> V;
+    /* center of polygon */ 
     PointPoly c;
 };
 
