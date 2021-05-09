@@ -13,7 +13,7 @@
 # include <fstream>
 # include <ctime>
 # include "point.hpp"
-# include "polygon.hpp"
+// # include "polygon.hpp"
 
 using namespace std;
 
@@ -36,7 +36,80 @@ NOTES
 -----------
  5 | 6 | 7
 
+*) Polygon in same header because of include problems
+
 */
+class Bucket;
+
+class Polygon {
+public:
+
+    friend class Bucket;
+    Polygon(double c0, double c1): c(this, c0,c1) {};
+    Polygon(Point p): c(this, p) {};
+    Polygon() {};
+    // Polygon(Polygon&& poly): c(move(poly.c)), points(move(poly.points)), 
+    //     voronoi(move(poly.voronoi)), radii(move(poly.radii)), V(move(poly.V)){
+    //         cout << "in move ctor" << endl;
+    //     };
+    Polygon& operator=(Polygon&& poly){
+        // cout << "move assign " << endl;
+        c = move(poly.c);
+        points = move(poly.points); 
+        voronoi = move(poly.voronoi);
+        radii = move(poly.radii);
+        V = move(poly.V);
+        return *this;
+    }
+
+    void addPoint(double p0, double p1);
+    void addPoint(const Point& pin);
+
+    void calculateVoronoi(void);
+
+    void printPoints(string no);
+    friend std::ostream &operator<<(std::ostream &os, const Polygon &poly);
+
+    class PointPoly: public Point {
+    public:
+        PointPoly() {};
+        PointPoly(Polygon* pol) : poly(pol) {};
+        PointPoly(Polygon* pol, const Point& p): poly(pol), Point(p) {};
+        PointPoly(Polygon* pol, double p0, double p1): poly(pol), Point(p0, p1) {};
+        PointPoly(const PointPoly& p): poly(p.poly), Point(p.x, p.y){};
+        // PointPoly(PointPoly&& p): poly(move(p.poly)), Point(p.x, p.y){};
+        PointPoly& operator=(PointPoly&& p){ 
+            x = p.x; y =p.y;
+            poly = move(p.poly);
+            return *this;
+        }
+
+
+        bool operator< (const PointPoly& other) const;
+        bool operator> (const PointPoly& other) const;
+        bool operator<= (const PointPoly& other) const;
+        bool operator>= (const PointPoly& other) const;
+
+    private: 
+        Polygon* poly; 
+    };
+
+private: 
+    /* points in polygon */ 
+    vector<PointPoly> points;
+    /* same order as polygon pnts, order is not to be changed*/ 
+    vector<Point> voronoi; 
+    /* same order as polygon pnts, order is not to be changed*/ 
+    vector<double> radii;
+    /* Dealauney Candidates*/ 
+    vector<Point> V;
+    /* center of polygon */ 
+    PointPoly c;
+};
+
+template <typename T> 
+bool circumcenter(T& ret, const T& a, const T& b, const T& c);
+extern template bool circumcenter<Point>(Point& ret, const Point& a, const Point& b, const Point& c);
 
 
 class  Bucket {
@@ -87,7 +160,7 @@ public:
     int j() const { return ind_j;}
     int r() const {return (ind_j)/(N/P)*P + (ind_i)/(N/P);}
     // TODO: think about if return by value really is a good idea...
-    vector<Point> getPoints();
+    int getPoints(vector<Point>& pnts, int stat);
     void printList();
     void doSomething();
 
@@ -124,14 +197,22 @@ private:
     void addPoint(double x, double y);
     void addBucket(int dir);
     void addToList();
-    void fillCoordinates();
+    int fillCoordinates(int stat);
     void sendCoordinates(int destination, int no_bucket);
     void calculateDelauney();
+    int initialize(int status);
+
+    /* variables for Delauney calculation */
+    Polygon poly;
+    int current_point_index;
+    int init_dir_i, init_dir_j, init_incr ;
+    
 
 };
 
 class BoundaryBucket: private Bucket {
     inline bool isBnd( ) {return 1;};
 };
+
 
 #endif

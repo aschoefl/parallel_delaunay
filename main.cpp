@@ -29,6 +29,9 @@ int main ( int argc, char *argv[] ) {
     if (P-int(P) == 0.) Bucket::P = int(P);
     else throw runtime_error("sqrt of amount of processors must be int");
 
+    // for (int i = -1; i<2; i+=2)
+    //     cout << i << " ";
+    // cout << endl;
     shared_ptr<Bucket> root = Bucket::createRoot(r);
     root->doSomething();
     // root->test();
