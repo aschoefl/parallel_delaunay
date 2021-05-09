@@ -46,7 +46,7 @@ private:
     /* points in polygon */ 
     vector<PointPoly> points;
     /* same order as polygon pnts, order is not to be changed*/ 
-    vector<PointPoly> voronoi; 
+    vector<Point> voronoi; 
     /* same order as polygon pnts, order is not to be changed*/ 
     vector<double> radii;
     /* Dealauney Candidates*/ 
@@ -54,5 +54,9 @@ private:
     /* center of polygon */ 
     PointPoly c;
 };
+
+template <typename T> 
+bool circumcenter(T& ret, const T& a, const T& b, const T& c);
+extern template bool circumcenter<Point>(Point& ret, const Point& a, const Point& b, const Point& c);
 
 #endif
