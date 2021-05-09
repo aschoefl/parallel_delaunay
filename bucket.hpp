@@ -199,13 +199,13 @@ private:
     void addToList();
     int fillCoordinates(int stat);
     void sendCoordinates(int destination, int no_bucket);
-    void calculateDelauney();
-    int initialize(int status);
+    int calculateDelauney(int step);
+    int initialize(int step);
 
     /* variables for Delauney calculation */
     Polygon poly;
-    int current_point_index;
     int init_dir_i, init_dir_j, init_incr ;
+
     
 
 };
