@@ -151,8 +151,7 @@ public:
     /* don't just return false, because of downcasing*/ 
     inline bool isBnd( ) {return is_bnd;};
     void getIndex(int const dir, int& i, int& j);
-    // void getIndex(Point const p, int& i, int& j);
-
+    inline bool indexOutOfBnds(int ii, int jj) const ;
     inline int dist(const shared_ptr<Bucket> other) const; 
     
     /*** get fuctions ***/
@@ -205,6 +204,8 @@ private:
     /* variables for Delauney calculation */
     Polygon poly;
     int init_dir_i, init_dir_j, init_incr ;
+    int di, dj, it;
+    int test_ind;
 
     
 

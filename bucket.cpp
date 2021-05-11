@@ -18,7 +18,8 @@ void Bucket::addToList(){
 }
 
 void Bucket::printList(){
-    ofstream myfile ("points"+to_string(r())+".txt");
+    string path = "outdata/";
+    ofstream myfile (path+"points"+to_string(r())+".txt");
     if (myfile.is_open()) {
         myfile << "[";
         for (auto b : buckets) {
@@ -59,6 +60,11 @@ inline void Bucket::printNeighbours() const {
     cout << endl;
 }
 
+inline bool Bucket::indexOutOfBnds(int ii, int jj) const {
+    return (ii < 0 || ii > N-1 || jj < 0 || jj > N-1);
+}
+
+
 void Bucket::getIndex(int const dir, int& i, int& j){
     /* compute global indices for new bucket */
     i = ind_i;
@@ -68,11 +74,6 @@ void Bucket::getIndex(int const dir, int& i, int& j){
     if (2<dir && dir<6) i--;
     if (2>dir || dir>6) i++;
 }
-
-// void Bucket::getIndex(Point const p, int& i, int& j){
-//     i = p.x*N;
-//     j = p.y*N;
-// }
 
 void Bucket::addBucket(int dir){ // to be called from corner
 
@@ -213,7 +214,7 @@ shared_ptr<Bucket> Bucket::operator() (int i, int j) const{
                 }
             }
             if (next->isBnd())
-                throw runtime_error("index out of bound in ()");
+                throw runtime_error("index out of bound in operator()");
             current = next;
             dir[k]--;
         }
@@ -242,11 +243,12 @@ int Bucket::fillCoordinates(int stat){
             int no_bucket = i()*N+j();
             // cout << "send from " << root->r() << " to " << r() << endl;
             MPI_Send(&no_bucket,1,MPI_INT,r(),TAG_NOTIFY,MPI_COMM_WORLD);//, &request);
+            // cout << r() << ": sent notification" << endl;
+
             return 1;
         } else if (stat == 1) {
-            // goto request;
-            // resume:
             MPI_Recv(buffer,MAX_PNTS,MPI_DOUBLE,r(),TAG_DATA,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+            // cout << r() << ": received coords" << endl;
             // MPI_Request req;
             // int no_bucket = i()*N+j();
             // MPI_Isend(&no_bucket,1,MPI_INT,r(),TAG_NOTIFY,MPI_COMM_WORLD, &req);
@@ -308,19 +310,16 @@ void Bucket::sendCoordinates(int destination, int no_bucket) {
     auto jj = no_bucket%N; 
 
     if (i() != ii || j() != jj ) {
+        // cout << r() << ": wrong bucket" << endl;
         (*root)(ii,jj)->sendCoordinates(destination, no_bucket);
         return;
     }
     /* gerenate data if not available */
     if (coordinates.empty())
         fillCoordinates(0); 
-    // cout << "cordinates to send: ";
-    for (auto coord : coordinates) {
-        cout << coord << " ";
-    }
-    cout << endl;
+
     int tmp = -1;
-    MPI_Send(&tmp,1,MPI_INT,destination,TAG_NOTIFY,MPI_COMM_WORLD);//, &request);
+    MPI_Send(&tmp,1,MPI_INT,destination,TAG_NOTIFY,MPI_COMM_WORLD);
     MPI_Send(coordinates.data(), MAX_PNTS, MPI_DOUBLE, destination, 
                 TAG_DATA, MPI_COMM_WORLD);
 }
@@ -374,12 +373,13 @@ void Bucket::doSomething() {
         MPI_Irecv( buf+i, 1, MPI_INT, i, 
                 TAG_NOTIFY, MPI_COMM_WORLD, &requests[i] ); 
     bool startup = false;
-    bool delauney = false;
     bool init = true;
 
     vector<Point> pnts;
     int cnt = 0; // to iterate through pnts
     int step = 0;
+    vector<int> buf_status;
+    vector<int> buf_buf;
 
     /* always called from root processor, so there should be nothing to send */
     if (getPoints(pnts, 0)) throw runtime_error("initialize called from wrong processor");
@@ -389,26 +389,22 @@ void Bucket::doSomething() {
                 poly = move(Polygon(pnts[cnt]));
             step = initialize(step);
             if (step == 0) { // init has finished
-                init = !init;
-                delauney = !delauney;
-                break; // just for testing!
+                init = false;
             } else {
                 // cout << r() << ": step not zero" << endl;
                 startup = true;
                 break;
             }
+        } if (!init) {
+            step = calculateDelauney(step);
+            if (step == 0) { // delauney has finished
+                cnt++;
+                init = true;
+            } else {
+                startup = true;
+                break;
+            }
         }
-        // if (delauney) {
-        //     step = calculateDelauney(step);
-        //     if (step == 0) { // delauney has finished
-        //         cnt++;
-        //         init = !init;
-        //         delauney = !delauney;
-        //     } else {
-        //         startup = true;
-        //         break;
-        //     }
-        // }
     }
 
     // TODO: what if running stops and how to do that?
@@ -416,52 +412,39 @@ void Bucket::doSomething() {
         MPI_Waitsome( size, requests, &ndone, indices, statuses ); 
         for (auto i=0; i<ndone; i++) { 
             auto j = indices[i]; 
-            // printf( "Msg from %d with tag %d and value %d\n",  
+            // printf( "on %d msg from %d with value (%d,%d)\n",  
+            //         r(),
             //         statuses[i].MPI_SOURCE,  
-            //         statuses[i].MPI_TAG,
-            //         buf[j]); 
-            if (statuses[i].MPI_SOURCE != r() && buf[j]!=-1 ) {
+            //         buf[j]/N,
+            //         buf[j]%N); 
+
+            if (buf[j]>-1) 
                 sendCoordinates(statuses[i].MPI_SOURCE, buf[j]);
+            else if (buf[j] == -1 || startup) {
+                startup = false;
+                if (cnt < pnts.size()) {
+                    if (init) {
+                        if (step == 0) // call for new point
+                            poly = move(Polygon(pnts[cnt]));
+                        step = initialize(step);
+                        if (step == 0) { // init has finished
+                            init = false;
+                        } 
+                    } if (!init) {
+                        step = calculateDelauney(step);
+                        if (step == 0) { // delauney has finished
+                            cnt++;
+                            init = true;
+                        } 
+                    }
+                } 
             }
-            // else { /* stop if receive msg from oneself */
-            //     cout << "stop running " << endl;
-            //     running = false;
-            // }
-            if (startup && cnt < pnts.size()) {
-                if (init) {
-                    if (step == 0) // call for new point
-                        poly = move(Polygon(pnts[cnt]));
-                    step = initialize(step);
-                    if (step == 0) { // init has finished
-                        init = !init;
-                        delauney = !delauney;
-                    } 
-                }
-                // if (delauney) {
-                //     step = calculateDelauney(step);
-                //     if (step == 0) { // delauney has finished
-                //         cnt++;
-                //         init = !init;
-                //         delauney = !delauney;
-                //     } 
-                // }
-            }
-            // if (startup && cnt < pnts.size()) {
-            //     // only on root bucket for now!
-            //     step = initialize(step);
-            //     /* if initialization for current bucket is finished*/
-            //     if (step==0) { 
-            //         startup = false;
-            //         cnt++;
-            //         if (cnt < pnts.size())
-            //             poly = move(Polygon(pnts[cnt]));
-            //     }
-            // } else if (!startup) {
-            //     step = calculateDelauney(step);
-            //     if (step == 0) startup = true;
-            // }
             MPI_Irecv( buf+j, 1, MPI_INT, j, 
                 TAG_NOTIFY, MPI_COMM_WORLD, &requests[j]); 
+
+
+            // cout << r() << ": startup: " << startup << ", cnt: " << cnt << endl;
+
         } 
     } 
 }
@@ -472,7 +455,6 @@ void Bucket::doSomething() {
     
 */
 int Bucket::initialize(int step) {
-
 
     /* current (i,j) */
     auto ii = i();
@@ -494,9 +476,9 @@ int Bucket::initialize(int step) {
             while (true){                
 
                 /* add ghost point if out of bounds */
-                if (ii+init_incr*init_dir_i==N || ii+init_incr*init_dir_i==0 || jj+init_incr*init_dir_j==N || jj+init_incr*init_dir_j==0) {
-                    // stop = 1;
+                if (indexOutOfBnds(ii+init_incr*init_dir_i,jj+init_incr*init_dir_j)) {
                     add(Point(max(init_dir_i, 0), max(init_dir_j,0)));
+                    // cout << r() << ": out of bnds" << endl;
                     break;
                 }
                 
@@ -506,10 +488,17 @@ int Bucket::initialize(int step) {
                 //     resume:
                 //     (*self)(5,5)->getPoints(tmp, 1);
                 // }
+                // if (r() == 0)
+                // cout << r() << ": before resume init_dir_i: "<< init_dir_i << ", init_dir_j: "
+                //         << init_dir_j << ", init_incr: "<< init_incr << endl;
 
                 if ((*self)(ii+init_incr*init_dir_i,jj+init_incr*init_dir_j)->getPoints(tmp, 0)) {
+                    // if (r() == 0) cout << r() << ": to be resumed" << endl;
                     return 1;
                     resume:
+                    // if (r() == 0)
+                    // cout << r() << ": after resume init_dir_i: "<< init_dir_i << ", init_dir_j: "
+                    //     << init_dir_j << ", init_incr: "<< init_incr << endl;
                     (*self)(ii+init_incr*init_dir_i,jj+init_incr*init_dir_j)->getPoints(tmp, 1);
                 }
                 
@@ -525,233 +514,242 @@ int Bucket::initialize(int step) {
     }
     poly.calculateVoronoi();
 
-    cout << r() <<": center: " << poly.c << endl;
-    cout << r() <<": poly: " << poly << endl;
+    // cout << r() <<": center: " << poly.c << endl;
+    // cout << r() <<": poly: " << poly << endl;
     poly.printPoints(to_string(r()));
-    cout << "****** Proc " << r() << " finished ******" << endl;
+    printList();
+    cout << "****** Proc " << r() << " initialize finished ******" << endl;
 
     return 0;
 }
 
 
-// int Bucket::calculateDelauney(int step){ // test on one processor
-//     auto it = 0; // iterator
-//     while (it <poly.points.size()) {
-//         cout << endl << endl << "it: " << it<<
-//             " voroni.size(): " << poly.voronoi.size() <<
-//             " points.size(): " << poly.points.size() << endl;
-//         auto vor_size = poly.voronoi.size();
-//         auto rad = poly.radii[it];
-//         auto pnt = poly.voronoi[it];
-//         /* distance of buckets that can contain candidates */
-//         int n = rad*N+1;
-//         /* indices of bucket containing pnt */
-//         int pi = pnt.x*N;
-//         int pj = pnt.y*N; 
+int Bucket::calculateDelauney(int step){ 
 
-//         vector<Point> candidates;
-
-//         if (step==1) {
-//             goto resume;
-//         }
-
-//         poly.V.clear();
-//         /* calculate Delauney neighbour candidates for pnt */
-//         for (auto di=-n; di<n+1; di++) 
-//             for (auto dj=-n; dj<n+1; dj++) 
-                
-//                 if((*self)(pi+di, pj+dj)->getPoints(candidates, 0)) {
-//                     return 1;
-//                     resume:
-//                     (*self)(pi+di, pj+dj)->getPoints(candidates, 1);
-//                 }
-
-//                 for (auto p : candidates) 
-//                     /* add if in right range and not already in points or center*/
-//                     if (Point::dist(p,pnt) < rad 
-//                       && std::find(poly.points.begin(), poly.points.end(), p) == poly.points.end()
-//                       && p!=poly.c)
-//                         poly.V.push_back(p);
-
-//         if (poly.V.empty()) {
-//             cout << "V empty for " << pnt << endl;
-//             it++;
-//         } else {
-//             auto v = poly.V.front();
-//             /*
-//              TODO: check with paper again
-//              not sure about that part differs a bit from paper */ 
-//             int first = -1, last = -1;
-//             for (auto k=0; k<vor_size; k++) {
-//                 /* search first and last index in half plane 
-//                     dist(c,p) <= dist(v,p) -> p in half plane
-//                 */
-//                 if (Point::dist(poly.voronoi[k],poly.c) <= Point::dist(poly.voronoi[k],v) &&
-//                     Point::dist(poly.voronoi[(k+1)%vor_size],poly.c) > Point::dist(poly.voronoi[(k+1)%vor_size],v)) 
-//                         last = k;
-//                 if (Point::dist(poly.voronoi[k],poly.c) > Point::dist(poly.voronoi[k],v) &&
-//                     Point::dist(poly.voronoi[(k+1)%vor_size],poly.c) <= Point::dist(poly.voronoi[(k+1)%vor_size],v)) 
-//                         first = (k+1)%vor_size; // it is actually (first-1)%poly.size() !
-//             }
-//             cout <<  "first: " << first << " last: " << last << " " << endl;
-//             cout << "v: " << v << endl;
-//             // cout << " size voronoi: " << vor_size << 
-//             //     " size V: " << poly.V.size() << " for " << pnt << endl;
-
-//             if (first==-1 || last == -1) {
-//                 it++;
-//                 continue;
-//             }
-//             Point o1;
-//             /* ATTENTION: in paper it is last +1 and first-1*/ 
-//             if (!circumcenter(o1, static_cast<Point>(poly.points[(last+1)%poly.points.size()]), v, static_cast<Point>(poly.c))){
-//                 if (Point::dist(v,poly.c) < Point::dist(poly.points[(last+1)%poly.points.size()], poly.c)) {
-//                     poly.points.erase(poly.points.begin()+(last+1)%poly.points.size());
-//                     poly.addPoint(v);
-//                     poly.calculateVoronoi();
-//                     cout << "here 1" << endl;
-//                     continue;
-//                 } else {
-//                     it++;
-//                     cout << "here 2" << endl;
-//                     continue;
-//                 }
-//             }
-//             Point o2; 
-//             if (!circumcenter(o2, static_cast<Point>(poly.points[first]), v, static_cast<Point>(poly.c))) {
-//                 if (Point::dist(v,poly.c) < Point::dist(poly.points[first], poly.c)) {
-//                     poly.points.erase(poly.points.begin()+first);
-//                     poly.addPoint(v);
-//                     poly.calculateVoronoi();
-//                     cout << "here 3" << endl;
-//                     continue;
-//                 } else {
-//                     it ++;
-//                     cout << "here 4" << endl;
-//                     continue;
-//                 }
-//             }
-            
-//             cout << endl << "poly before " << poly << endl;
-
-//             /* erase values */
-
-//             for (int k=(last+1)%vor_size; k!=first; k=(k+1)%vor_size) {
-//                 cout << "vor" <<  k << endl;
-//                 poly.voronoi.erase(poly.voronoi.begin()+k);
-//             }
-//             for (int k=(last+1)%vor_size; k!=first; k=(k+1)%vor_size)
-//                 poly.radii.erase(poly.radii.begin()+k);
-//             auto tmp = (first-1)%vor_size; // max was not working
-//             if (tmp <0) tmp =0;
-//             for (int k=(last+1)%vor_size; k!=tmp; k=(k+1)%vor_size)
-//             {
-//                 cout << "pnts" << k << endl;
-//                 poly.points.erase(poly.points.begin()+k);
-//             }
-
-//             // poly.voronoi.erase(poly.voronoi.begin()+(last+1)%vor_size, poly.voronoi.begin()+first);
-//             // poly.radii.erase(poly.radii.begin()+(last+1)%vor_size, poly.radii.begin()+first);
-//             // poly.points.erase(poly.points.begin()+(last+1)%vor_size, poly.points.begin()+tmp);
-//             cout << endl << "poly after erase " << poly << endl;
-
-//             /* add new values */
-//             poly.addPoint(v);
-//             // cout << (last+1)%vor_size << endl;
-//             poly.voronoi.insert(poly.voronoi.begin()+(last)%vor_size, o2);
-//             poly.voronoi.insert(poly.voronoi.begin()+(last)%vor_size, o1);
-//             poly.radii.insert(poly.radii.begin()+(last)%vor_size,Point::dist(o1,poly.c));
-//             poly.radii.insert(poly.radii.begin()+(last)%vor_size,Point::dist(o2,poly.c));
-
-//             cout << endl << "poly after addition  " << poly << endl;
-
-//             // cout << "o1: " << o1 << " o2: " << o2 << endl;
-//             poly.printPoints(to_string(it));
-//             it++;
-//             // it=(last+1)%poly.points.size();
-//             // if (it == 0) break;
-//         }
-                    
-//     }
-//     cout << "finished" << endl;
-//     poly.printPoints(to_string(42));
-//     printList();
-//     /* calculate Delauney neighbour candidates  */
-//     // poly.V.clear();
-//     // for (auto it = 0; it < vor_size; ++it) {
-
-//     //     auto rad = poly.radii[it];
-//     //     auto pnt = poly.voronoi[it];
-//     //     int n = rad*N+1;
-//     //     int pi = pnt.x*N;
-//     //     int pj = pnt.y*N; // indices of point 
-
-//     //     for (auto di=-n; di<n+1; di++) 
-//     //         for (auto dj=-n; dj<n+1; dj++) 
-//     //             for (auto p : (*a)(pi+di, pj+dj)->getPoints()) 
-//     //                 if (Point::dist(p,pnt) < rad) {
-//     //                     poly.V.push_back(p);
-//     //                     // poly.addPoint(p);
-//     //                 }
-//     // }
-
-//     // poly.calculateVoronoi();
-//     // cout << "poly: " << poly << endl;
-
-//     // cout << "V: [ ";
-//     // for (const auto& p: poly.V)
-//     //     cout << p << " ";
-//     // cout << "]" << endl;
-
-// }
-
-
-/* test function to be deleted in the end */
-void Bucket::test() { 
-
-    // shared_ptr<Bucket> a = self;
-    // a = (*a)(5,5);
-    // // cout << "here " << endl;
-    // // a = (*a)(min(i()+5, N-1),min(i()+5, N-1));  // this is a problem
-    // // a = (*a)(N-1,N-1); 
-    // // a = (*a)(5,5); 
-    // // a = (*a)(5,5);
-    // // a = (*a)(0,7);
-    // // a = (*a)(1,N-2);
-    // // a = (*a)(3,1);
-    // // a = (*a)(7,7);
-    // // problem: deadlock somewhere
-    // for (int ii =5;ii<N;ii++) {
-    //     for(int jj=5;jj<N;jj++) {
-    //         a = (*a)(ii,jj);
-    //         a->getPoints();
-    //     }
+    // cout << r() << ": in Delauney with step " << step << endl;
+    vector<Point> candidates;
+    
+    // // just for testing
+    // int ii, jj;
+    // if (r()==0) {
+    //     ii = 2;
+    //     jj = 2;
     // }
-    // // cout << "r: " << a->r() << endl;
-    // vector<Point> pnts = move(a->getPoints());
-    // // cout << "points on " << r() << " ";
-    // // for (auto p: pnts)
-    // //     cout << p << " ";
-    // // cout << endl;
+    // if (r()==3) {
+    //     ii = 0;
+    //     jj = 0;
+    // }
+    // if (r()==2) {
+    //     ii = 2;
+    //     jj = 2;
+    // }
+    // if (r()==1) {
+    //     ii = 0;
+    //     jj = 2;
+    // }
 
-    // // int no_bucket = i()*N+j();
-    // // MPI_Send(&no_bucket,1,MPI_INT,r(),TAG_NOTIFY,MPI_COMM_WORLD);
+    // if (step == 1) goto test;
 
+    // for (test_ind =0; test_ind<2; test_ind++) {
+    //     if((*self)(ii,jj)->getPoints(candidates, 0)) {
+    //         return 1;
+    //         test:
+    //         cout << r() << ": after resume" << endl;
+    //         (*self)(ii,jj)->getPoints(candidates, 1);
+    //         ii++;
+    //         jj++;
+    //     } 
+    // }
+    // cout << "****** Proc " << r() << " FINISHED ******" << endl;
+    // return 0;
+ 
 
-    // printList();
-    // cout << "****** Proc " << r() << " finished ******" << endl;
-    // // cout << "coordinates: ";
-    // // for (auto p: coordinates)
-    // //     cout << p << " ";
-    // // cout << endl;
+    if (step == 0) it = 0;
+    // auto it = 0; // iterator
+    // while (it <poly.points.size()) {
+        // cout << endl << endl << r() << ": it: " << it<<
+        //     " voroni.size(): " << poly.voronoi.size() <<
+        //     " points.size(): " << poly.points.size() << endl;
+        auto vor_size = poly.voronoi.size();
+        auto rad = poly.radii[it];
+        auto pnt = poly.voronoi[it];
+        /* distance of buckets that can contain candidates */
+        int n = rad*N+1;
+        /* indices of bucket containing pnt */
+        int pi = pnt.x*N;
+        int pj = pnt.y*N; 
 
-    // // a->printNeighbours();
-    // // a->printList();
+        if (step==1) {
+            goto resume;
+        }
 
-    // /* send stop notification */
-    // // int stop = -1;
-    // // MPI_Send(&stop,1,MPI_INT,r(),TAG_NOTIFY,MPI_COMM_WORLD);
-    // cout << "here " << r() << endl;
+        // just for testing
+
+        poly.V.clear();
+        /* calculate Delauney neighbour candidates for pnt */
+        for (di=-n; di<n+1; di++) {
+            for (dj=-n; dj<n+1; dj++) {
+                // cout << r() << ": di: " << di << ", dj: "<< dj<< endl;
+                if (indexOutOfBnds(pi+di, pj+dj)) {
+                    // cout << r() << ": aob, di: " << di << ", dj: "<< dj<< endl;
+                    continue;
+                } 
+                if((*self)(pi+di, pj+dj)->getPoints(candidates, 0)) {
+                    // cout << r() << ": before return 1 with " << 
+                    //     "di: " << di << ", dj: "<< dj<< endl;
+
+                    return 1;
+                    resume:
+                    // cout << r() << ": resume with " << 
+                    //     "di: " << di << ", dj: "<< dj<< endl;
+                    // cout << r() << ": after resume" << endl;
+                    (*self)(pi+di, pj+dj)->getPoints(candidates, 1);
+                    // cout << r() << ": after getPoints with " << 
+                    //     "di: " << di << ", dj: "<< dj<< endl;
+                }
+
+                // for (auto p : candidates) {
+                //     /* add if in right range and not already in points or center*/
+                //     if (Point::dist(p,pnt) < rad 
+                //       && std::find(poly.points.begin(), poly.points.end(), p) == poly.points.end()
+                //       && p!=poly.c)
+                //         poly.V.push_back(p);
+                // }
+            }
+        }
+
+        // if (poly.V.empty()) {
+        //     // cout << "V empty for " << pnt << endl;
+        //     it++;
+        // } else {
+        //     auto v = poly.V.front();
+        //     /*
+        //      TODO: check with paper again
+        //      not sure about that part differs a bit from paper */ 
+        //     int first = -1, last = -1;
+        //     for (auto k=0; k<vor_size; k++) {
+        //         /* search first and last index in half plane 
+        //             dist(c,p) <= dist(v,p) -> p in half plane
+        //         */
+        //         if (Point::dist(poly.voronoi[k],poly.c) <= Point::dist(poly.voronoi[k],v) &&
+        //             Point::dist(poly.voronoi[(k+1)%vor_size],poly.c) > Point::dist(poly.voronoi[(k+1)%vor_size],v)) 
+        //                 last = k;
+        //         if (Point::dist(poly.voronoi[k],poly.c) > Point::dist(poly.voronoi[k],v) &&
+        //             Point::dist(poly.voronoi[(k+1)%vor_size],poly.c) <= Point::dist(poly.voronoi[(k+1)%vor_size],v)) 
+        //                 first = (k+1)%vor_size; // it is actually (first-1)%poly.size() !
+        //     }
+        //     // cout <<  "first: " << first << " last: " << last << " " << endl;
+        //     // cout << "v: " << v << endl;
+        //     // cout << " size voronoi: " << vor_size << 
+        //     //     " size V: " << poly.V.size() << " for " << pnt << endl;
+
+        //     if (first==-1 || last == -1) {
+        //         it++;
+        //         continue;
+        //     }
+        //     Point o1;
+        //     /* ATTENTION: in paper it is last +1 and first-1*/ 
+        //     if (!circumcenter(o1, static_cast<Point>(poly.points[(last+1)%poly.points.size()]), v, static_cast<Point>(poly.c))){
+        //         if (Point::dist(v,poly.c) < Point::dist(poly.points[(last+1)%poly.points.size()], poly.c)) {
+        //             poly.points.erase(poly.points.begin()+(last+1)%poly.points.size());
+        //             poly.addPoint(v);
+        //             poly.calculateVoronoi();
+        //             // cout << "here 1" << endl;
+        //             continue;
+        //         } else {
+        //             it++;
+        //             // cout << "here 2" << endl;
+        //             continue;
+        //         }
+        //     }
+        //     Point o2; 
+        //     if (!circumcenter(o2, static_cast<Point>(poly.points[first]), v, static_cast<Point>(poly.c))) {
+        //         if (Point::dist(v,poly.c) < Point::dist(poly.points[first], poly.c)) {
+        //             poly.points.erase(poly.points.begin()+first);
+        //             poly.addPoint(v);
+        //             poly.calculateVoronoi();
+        //             // cout << "here 3" << endl;
+        //             continue;
+        //         } else {
+        //             it ++;
+        //             // cout << "here 4" << endl;
+        //             continue;
+        //         }
+        //     }
+            
+        //     // cout << endl << "poly before " << poly << endl;
+
+        //     /* erase values */
+
+        //     for (int k=(last+1)%vor_size; k!=first; k=(k+1)%vor_size) {
+        //         // cout << "vor" <<  k << endl;
+        //         poly.voronoi.erase(poly.voronoi.begin()+k);
+        //     }
+        //     for (int k=(last+1)%vor_size; k!=first; k=(k+1)%vor_size)
+        //         poly.radii.erase(poly.radii.begin()+k);
+        //     auto tmp = (first-1)%vor_size; // max was not working
+        //     if (tmp <0) tmp =0;
+        //     for (int k=(last+1)%vor_size; k!=tmp; k=(k+1)%vor_size)
+        //     {
+        //         // cout << "pnts" << k << endl;
+        //         poly.points.erase(poly.points.begin()+k);
+        //     }
+
+        //     // poly.voronoi.erase(poly.voronoi.begin()+(last+1)%vor_size, poly.voronoi.begin()+first);
+        //     // poly.radii.erase(poly.radii.begin()+(last+1)%vor_size, poly.radii.begin()+first);
+        //     // poly.points.erase(poly.points.begin()+(last+1)%vor_size, poly.points.begin()+tmp);
+        //     // cout << endl << "poly after erase " << poly << endl;
+
+        //     /* add new values */
+        //     poly.addPoint(v);
+        //     // cout << (last+1)%vor_size << endl;
+        //     poly.voronoi.insert(poly.voronoi.begin()+(last)%vor_size, o2);
+        //     poly.voronoi.insert(poly.voronoi.begin()+(last)%vor_size, o1);
+        //     poly.radii.insert(poly.radii.begin()+(last)%vor_size,Point::dist(o1,poly.c));
+        //     poly.radii.insert(poly.radii.begin()+(last)%vor_size,Point::dist(o2,poly.c));
+
+        //     // cout << endl << "poly after addition  " << poly << endl;
+
+        //     // cout << "o1: " << o1 << " o2: " << o2 << endl;
+        //     // poly.printPoints(to_string(it));
+        //     it++;
+        //     // it=(last+1)%poly.points.size();
+        //     // if (it == 0) break;
+        // }
+                    
+    // }
+    cout << "****** Proc " << r() << " FINISHED ******" << endl;
+    printList();
+
+    return 0;
+
+    /* calculate Delauney neighbour candidates  */
+    // poly.V.clear();
+    // for (auto it = 0; it < vor_size; ++it) {
+
+    //     auto rad = poly.radii[it];
+    //     auto pnt = poly.voronoi[it];
+    //     int n = rad*N+1;
+    //     int pi = pnt.x*N;
+    //     int pj = pnt.y*N; // indices of point 
+
+    //     for (auto di=-n; di<n+1; di++) 
+    //         for (auto dj=-n; dj<n+1; dj++) 
+    //             for (auto p : (*a)(pi+di, pj+dj)->getPoints()) 
+    //                 if (Point::dist(p,pnt) < rad) {
+    //                     poly.V.push_back(p);
+    //                     // poly.addPoint(p);
+    //                 }
+    // }
+
+    // poly.calculateVoronoi();
+    // cout << "poly: " << poly << endl;
+
+    // cout << "V: [ ";
+    // for (const auto& p: poly.V)
+    //     cout << p << " ";
+    // cout << "]" << endl;
+
 }
 
 /********* POLYGON *********/
@@ -823,8 +821,10 @@ std::ostream &operator<<(std::ostream &os, const Polygon &poly) {
 void Polygon::printPoints(string no) {
 
     ofstream myfile;
+    string path = "outdata/";
+
     
-    myfile.open("polyPoints"+no+".txt");
+    myfile.open(path+"polyPoints"+no+".txt");
     if (myfile.is_open()) {
         myfile << "[" << c << ",";
 
@@ -835,7 +835,7 @@ void Polygon::printPoints(string no) {
     }
     else cout << "Unable to open file";
 
-    myfile.open("voronoiPoints"+no+".txt");
+    myfile.open(path+"voronoiPoints"+no+".txt");
     if (myfile.is_open()) {
         myfile << "[";
         for (const auto& p: voronoi)
