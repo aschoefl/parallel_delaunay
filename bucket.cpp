@@ -512,57 +512,55 @@ int Bucket::initialize(int step) {
     bool cond = false;
     int k = 0;
 
-    // if (poly.points.size()>3) cond = true; 
+    if (poly.points.size()>3) cond = true; 
 
     while (cond) {
-        Point a = poly.points[k];
-        Point b = poly.points[(k+2)%poly.points.size()];
-        Point p = poly.points[(k+1)%poly.points.size()];
-        bool erased  = false;
-        /*  check if poly.c and q are in the same half plance defined by a-b */
-        if (a.x == b.x) { 
-            if (poly.c.x < a.x && p.x < a.x) {
-                poly.points.erase(poly.points.begin()+(k+1)%poly.points.size());
-                erased = true;
-            }
-            else if (poly.c.x >= a.x && p.x >= a.x) {
-                poly.points.erase(poly.points.begin()+(k+1)%poly.points.size());
-                erased = true;
-            }
-        } else {
-            /* bisector as linear function */
-            auto h = [&a, &b](double x) {
-                return (a.y-b.y)/(a.x-b.x)*(x-b.x)+b.y;
-            };
-            /* poly.c in subgraph of h*/
-            if (poly.c.y < h(poly.c.x) && p.y < h(p.x)) {
-                poly.points.erase(poly.points.begin()+(k+1)%poly.points.size());
-                erased = true;
-            }
-            /* poly.c in supergraph of h*/
-            else if (poly.c.y >= h(poly.c.x) && p.y >= h(p.x)) {
-                poly.points.erase(poly.points.begin()+(k+1)%poly.points.size());
-                erased = true;
-            }
-        }
+        Point v = poly.points[(k+1)%poly.points.size()]-poly.points[k];
+        Point w = poly.points[(k+2)%poly.points.size()]-poly.points[k];
 
-        if (erased) {
+        /* convex if cross product positiv */ 
+        if (v.x*w.y-v.y*w.x < 0) {
+            poly.points.erase(poly.points.begin()+(k+1)%poly.points.size());
             cout << root->r() << ": erased point with index " << k << endl;
-        }
-        if (erased && poly.points.size() == 3) cond = false;
-        else {
+            if (poly.points.size() == 3) cond = false;
+        } else {
             k = (k+1)%poly.points.size();
             if (k==0) cond = false;
         }
 
-    }
-        // sort(to_remove.begin(), to_remove.end(), greater <>());
-
-        // to_remove.sort(to_remove.rbegin(), to_remove.rend()); 
-        // for (int k:to_remove) {
-        //     cout << root->r() << ": remove point with index " << k << endl;
-        //     poly.points.erase(poly.points.begin()+k);
+        // Point a = poly.points[k];
+        // Point b = poly.points[(k+2)%poly.points.size()];
+        // Point p = poly.points[(k+1)%poly.points.size()];
+        // bool erased  = false;
+        // /*  check if poly.c and q are in the same half plance defined by a-b */
+        // if (a.x == b.x) { 
+        //     if (poly.c.x < a.x && p.x < a.x) {
+        //         poly.points.erase(poly.points.begin()+(k+1)%poly.points.size());
+        //         erased = true;
+        //     }
+        //     else if (poly.c.x >= a.x && p.x >= a.x) {
+        //         poly.points.erase(poly.points.begin()+(k+1)%poly.points.size());
+        //         erased = true;
+        //     }
+        // } else {
+        //     /* bisector as linear function */
+        //     auto h = [&a, &b](double x) {
+        //         return (a.y-b.y)/(a.x-b.x)*(x-b.x)+b.y;
+        //     };
+        //     /* poly.c in subgraph of h*/
+        //     if (poly.c.y < h(poly.c.x) && p.y < h(p.x)) {
+        //         poly.points.erase(poly.points.begin()+(k+1)%poly.points.size());
+        //         erased = true;
+        //     }
+        //     /* poly.c in supergraph of h*/
+        //     else if (poly.c.y >= h(poly.c.x) && p.y >= h(p.x)) {
+        //         poly.points.erase(poly.points.begin()+(k+1)%poly.points.size());
+        //         erased = true;
+        //     }
         // }
+
+
+    }
 
     /* calculate voronoi points */
     poly.calculateVoronoi();

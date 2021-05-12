@@ -28,7 +28,7 @@ file_dir = '/home/ams/Studium/Parallel Computations/project/parallel_delaunay/ou
 #     myfile.close()
 
 
-t = 0
+t = 3
 k = t
 plt.figure()
 myfile = open(file_dir+'/'+'points'+str(t)+'.txt', 'rt')
