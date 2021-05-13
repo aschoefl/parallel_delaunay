@@ -547,6 +547,7 @@ int Bucket::calculateDelauney(int step){
 
     if (step == 0) it = 0;
     while (it <poly.points.size()) {
+        if (root->r() == 3)
         cout << endl << endl << root->r() << ": it: " << it 
         << " of "<< poly.points.size() << endl;
         //     " voroni.size(): " << poly.voronoi.size() <<
@@ -595,15 +596,17 @@ int Bucket::calculateDelauney(int step){
         }
         
         if (poly.V.empty()) {
+            if (root->r() == 3)
             cout << root->r() << ": V empty " << endl;
             it++;
             step =2;
             continue;
         }
         while (!poly.V.empty()) {
-        
+
             Point v = poly.V.back();
-            poly.V.pop_back();
+            // poly.V.pop_back();
+            poly.V.clear();
 
             Point a = (poly.c+v)/2;
             Point b = a + Point((v-a).y, (a-v).x);
@@ -656,48 +659,99 @@ int Bucket::calculateDelauney(int step){
                 // << " old_size: " << old_size << endl;
             }
 
-            cout << r() << ": v = " << v << " first = " << first << " last = " << last << endl;
+            if (root-> r() == 3)
+            cout << r() << ": v = " << v << " first = " << first << " last = " << last << " size = " << old_size<< endl;
 
             /* delete points */
-            if (first == last) last = ind(last+1);
-
             Point o1, o2;
             if(!circumcenter(o1, static_cast<Point>(poly.points[ind(last+1)]), v, static_cast<Point>(poly.c))) {
+                if (root->r() == 3)
                 cout << root->r() << ": circumcenter problem between " <<
                      poly.points[ind(last+1)] << v << static_cast<Point>(poly.c) << endl;
-                it++;
+                if (Point::dist(v,poly.c) < Point::dist(poly.points[ind(last+1)], poly.c)) {
+                    poly.points.erase(poly.points.begin()+ind(last+1));
+                    poly.addPoint(v);
+                    poly.calculateVoronoi();
+                } else {
+                    it++;
+                    // cout << "here 2" << endl;
+                }
+                step = 2;
                 break;
             }
 
 
             if (!circumcenter(o2, static_cast<Point>(poly.points[first]), v, static_cast<Point>(poly.c)) ){
+                if (root->r() == 3)
                 cout << root->r() << ": circumcenter problem between " <<
                      poly.points[first] << v << static_cast<Point>(poly.c) << endl;
-                it++;
+                if (Point::dist(v,poly.c) < Point::dist(poly.points[first], poly.c)) {
+                    poly.points.erase(poly.points.begin()+first);
+                    poly.addPoint(v);
+                    poly.calculateVoronoi();
+                } else {
+                    it++;
+                    // cout << "here 2" << endl;
+                    // continue;
+                }
+                step = 2;
                 break;
             }
 
             /* only one voronoi point outside */
             if (ind(last+1) == ind(first-1)) {
+                if (root->r() == 3)
                 cout << r() << ": erase voronoi pnt " << poly.voronoi[ind(last+1)] << endl; 
                 poly.voronoi.erase(poly.voronoi.begin()+ind(last+1));
-            } else { /* one than one point outside */
+            } else { /* more than one point outside */
+                if (root->r() == 3)
                 cout << r() << ": erase voronoi pnts " << poly.voronoi[ind(last+1)] << 
                 " to " << poly.voronoi[first] << endl; 
 
                 if (ind(last+1) < first) {
-                    cout << "here 1" << endl;
                     poly.voronoi.erase(poly.voronoi.begin()+ind(last+1), 
                         poly.voronoi.begin()+first);
+
+                    poly.radii.erase(poly.radii.begin()+ind(last+1), 
+                        poly.radii.begin()+first);
                 }
                 else {
-                                        cout << "here 2" << endl;
+
+                    // if (root->r() == 3) 
+                    // cout << "radii size: " << poly.radii.size() << " v size " << poly.voronoi.size() << endl;
+
 
                     poly.voronoi.erase(poly.voronoi.begin()+ind(last+1), 
-                        poly.voronoi.end()+1);
+                        poly.voronoi.end());
+
+                    poly.radii.erase(poly.radii.begin()+ind(last+1), 
+                        poly.radii.end());
+
                     poly.voronoi.erase(poly.voronoi.begin(), 
                         poly.voronoi.begin()+first);
+
+                    poly.radii.erase(poly.radii.begin(), 
+                        poly.radii.begin()+first);
+
                 }
+
+                if (ind(last+2) < first) {
+                    if (root->r() == 3)
+                        cout << root->r() << "here 1" << endl;
+
+                    poly.points.erase(poly.points.begin()+ind(last+2), 
+                        poly.points.begin()+first);
+                } else {
+                    if (root->r() == 3)
+                        cout << root->r() << "here 2" << endl;
+                    poly.points.erase(poly.points.begin()+ind(last+2), 
+                        poly.points.end());
+                    
+                    poly.points.erase(poly.points.begin(), 
+                        poly.points.begin()+first);
+
+                }
+
 
             }
 
@@ -708,21 +762,21 @@ int Bucket::calculateDelauney(int step){
             poly.radii.insert(poly.radii.begin()+ind(last+1),Point::dist(static_cast<Point>(poly.c), o1));
             poly.addPoint(v);
 
-            cout << root->r() << ": " << poly << endl; 
+            // if (root->r() == 3)
+            // cout << root->r() << ": " << poly << endl; 
 
-            // poly.points.insert(poly.points.begin()+ind(first-1),v);
-        
             it = max (it, ind(first+1));
+
         }
         // cout << root->r() << ": V empty, it: " << it << endl;
-
         step = 2;
     }
+    if (root->r() == 3)
     cout << root->r() << ": last it " << it << endl;
     cout << "****** Proc " << root->r() << " FINISHED ******" << endl;
     printList();
     poly.printPoints(to_string(root->r()+P*P));
-    cout << root->r() << ": " << poly << endl; 
+    // cout << root->r() << ": " << poly << endl; 
     return 0;
 }
 

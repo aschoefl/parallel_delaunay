@@ -28,42 +28,47 @@ file_dir = '/home/ams/Studium/Parallel Computations/project/parallel_delaunay/ou
 #     myfile.close()
 
 
-k = 3
-add = N
-plt.figure()
-myfile = open(file_dir+'/'+'points'+str(k)+'.txt', 'rt')
-data = myfile.read()
-pnts = np.array(ast.literal_eval(data))
-plt.scatter(pnts[:,0], pnts[:,1], label="pnts", color="grey")
-points = pnts
-
-
-# myfile = open(file_dir+'/'+'voronoiPoints'+str(k+add)+'.txt', 'rt')
-# data = myfile.read()
-# pnts = np.array(ast.literal_eval(data))
-# plt.plot(pnts[:,0], pnts[:,1], label="voronoi", color = "orange")
-
-
-myfile = open(file_dir+'/'+'polyPoints'+str(k+add)+'.txt', 'rt')
-data = myfile.read()
-pnts = np.array(ast.literal_eval(data))
-center = pnts[0,:]
-plt.scatter(pnts[1:,0], pnts[1:,1], label="poly", color="lime")
-plt.scatter(pnts[0,0], pnts[0,1], label="center", color="red")
-# if k==3: plt.scatter(0.375, 0.875)
-# if k==1: 
-#     plt.scatter(0.875, 0.875)
-    # plt.scatter((0.875+pnts[0,0])/2, (0.875+pnts[0,1])/2)
-# v = np.array([(0.5, 0.75), (0, -0.125), (0.375, 0.625), (0.625, 0.375), (0.875, 0.625)])
-# plt.plot(v[:,0], v[:,1])
-
-plt.grid()
-plt.xticks([ i/float(N) for i in range(0,N)])
-plt.yticks([ i/float(N) for i in range(0,N)])
+for k in range(0,4):
+    add = N
+    plt.figure(k)
+    # myfile = open(file_dir+'/'+'points'+str(k)+'.txt', 'rt')
+    # data = myfile.read()
+    # pnts = np.array(ast.literal_eval(data))
+    # plt.scatter(pnts[:,0], pnts[:,1], label="pnts", color="grey")
+    # points = pnts
 
 
 
-plt.legend()
+    try:
+        myfile = open(file_dir+'/'+'polyPoints'+str(k+add)+'.txt', 'rt')
+    except:
+        continue
+    data = myfile.read()
+    pnts = np.array(ast.literal_eval(data))
+    center = pnts[0,:]
+    plt.scatter(pnts[1:,0], pnts[1:,1], label="poly", color="lime")
+    plt.scatter(pnts[0,0], pnts[0,1], label="center", color="red")
+    # if k==3: plt.scatter(0.375, 0.875)
+    # if k==1: 
+    #     plt.scatter(0.875, 0.875)
+        # plt.scatter((0.875+pnts[0,0])/2, (0.875+pnts[0,1])/2)
+    # v = np.array([(0.5, 0.75), (0, -0.125), (0.375, 0.625), (0.625, 0.375), (0.875, 0.625)])
+    # plt.plot(v[:,0], v[:,1])
+
+    myfile = open(file_dir+'/'+'voronoiPoints'+str(k+add)+'.txt', 'rt')
+    data = myfile.read()
+    pnts = np.array(ast.literal_eval(data))
+    plt.plot(pnts[:,0], pnts[:,1], label="voronoi", color = "orange")
+
+
+    plt.grid()
+    plt.xticks([ i/float(N) for i in range(0,N)])
+    plt.yticks([ i/float(N) for i in range(0,N)])
+
+
+
+    plt.legend()
+    plt.show()
 
 if False:
     plt.figure()
@@ -77,4 +82,4 @@ if False:
     plt.yticks([ i/float(N) for i in range(0,N)])
 
     plt.legend()
-plt.show()
+    plt.show()
