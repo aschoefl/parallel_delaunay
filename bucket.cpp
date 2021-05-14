@@ -425,7 +425,7 @@ void Bucket::doSomething() {
     }
 
     if (!startup) {
-        if (P==0) return;
+        if (P==1) return;
         if (root->r() == 0) finished++;
         else {
             int tmp = -42;
