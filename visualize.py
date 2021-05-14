@@ -5,6 +5,7 @@ from scipy.spatial import Delaunay
 
 import os
 import time
+import sys
 
 N = 4
 
@@ -28,14 +29,15 @@ file_dir = '/home/ams/Studium/Parallel Computations/project/parallel_delaunay/ou
 #     myfile.close()
 
 
+
 for k in range(0,4):
     add = N
     plt.figure(k)
-    # myfile = open(file_dir+'/'+'points'+str(k)+'.txt', 'rt')
-    # data = myfile.read()
-    # pnts = np.array(ast.literal_eval(data))
-    # plt.scatter(pnts[:,0], pnts[:,1], label="pnts", color="grey")
-    # points = pnts
+    myfile = open(file_dir+'/'+'points'+str(k)+'.txt', 'rt')
+    data = myfile.read()
+    pnts = np.array(ast.literal_eval(data))
+    plt.scatter(pnts[:,0], pnts[:,1], label="pnts", color="grey")
+    points = pnts
 
 
 
