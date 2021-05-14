@@ -64,7 +64,6 @@ inline bool Bucket::indexOutOfBnds(int ii, int jj) const {
     return (ii < 0 || ii > N-1 || jj < 0 || jj > N-1);
 }
 
-
 void Bucket::getIndex(int const dir, int& i, int& j){
     /* compute global indices for new bucket */
     i = ind_i;
@@ -384,30 +383,46 @@ void Bucket::doSomething() {
     vector<int> buf_status;
     vector<int> buf_buf;
 
+    int I = N/P;
+    int ii, jj;
+    shared_ptr<Bucket> current; /* current bucket */
+
     /* always called from root processor, so there should be nothing to send */
-    if (getPoints(pnts, 0)) throw runtime_error("initialize called from wrong processor");
-    while (!startup && cnt < pnts.size()) {
-        if (init) {
-            if (step == 0)
-                poly = move(Polygon(pnts[cnt]));
-            step = initialize(step);
-            if (step == 0) { // init has finished
-                init = false;
-            } else {
-                // cout << root->r() << ": step not zero" << endl;
-                startup = true;
-                break;
+    // cout << root->r() << ": points in current bucket: " << pnts.size() << endl;
+    // cout << root->r() << ": ii = " << ii << ", jj = " << jj<< " ths: " << (root->r()%P+1)*I <<", " << (root->r()/P+1)*I << endl;
+
+
+    for (ii = root->r()%P*I; ii<(root->r()%P+1)*I; ii++) {
+        for (jj = root->r()/P*I; jj<(root->r()/P+1)*I; jj++) {
+            current = (*root)(ii, jj);
+            if (current->getPoints(pnts, 0)) throw runtime_error("initialize called from wrong processor");
+            cnt = 0;
+
+            while (!startup && cnt < pnts.size()) {
+                if (init) {
+                    if (step == 0)
+                        current->poly = move(Polygon(pnts[cnt]));
+                    step = current->initialize(step);
+                    if (step == 0) { // init has finished
+                        init = false;
+                    } else {
+                        startup = true;
+                        break;
+                    }
+                } if (!init) {
+                    step = current->calculateDelauney(step);
+                    if (step == 0) { // delauney has finished
+                        cnt++;
+                        init = true;
+                    } else {
+                        startup = true;
+                        break;
+                    }
+                }
             }
-        } if (!init) {
-            step = calculateDelauney(step);
-            if (step == 0) { // delauney has finished
-                cnt++;
-                init = true;
-            } else {
-                startup = true;
-                break;
-            }
+            if (startup) break;
         }
+        if (startup) break;
     }
 
     // TODO: what if running stops and how to do that?
@@ -425,28 +440,45 @@ void Bucket::doSomething() {
                 sendCoordinates(statuses[i].MPI_SOURCE, buf[j]);
             else if (buf[j] == -1 || startup) {
                 startup = false;
+                start_again:
+                // cout << root->r() << ": cnt = " << cnt << " step = " << step << " init = " << init << endl;
+
                 if (cnt < pnts.size()) {
                     if (init) {
-                        if (step == 0) // call for new point
-                            poly = move(Polygon(pnts[cnt]));
-                        step = initialize(step);
-                        if (step == 0) { // init has finished
+                        if (step == 0) /* call for new point */
+                            current->poly = move(Polygon(pnts[cnt]));
+                        step = current->initialize(step);
+                        if (step == 0) { /* init has finished*/
                             init = false;
                         } 
-                    } if (!init) {
-                        step = calculateDelauney(step);
-                        if (step == 0) { // delauney has finished
+                    } 
+                    if (!init) { /* this is different than else! */
+                        step = current->calculateDelauney(step);
+                        if (step == 0) { /* delauney has finished */
                             cnt++;
                             init = true;
+                            goto start_again; 
                         } 
                     }
-                } 
+                } else {
+                    /* build a for loop like increase */
+                    if (ii == (root->r()%P+1)*I-1 && jj==(root->r()/P+1)*I-1) {
+                        cout <<  "------ PROCESSOR " << root->r() <<" FINISHED ------" << endl;
+                    } else {
+                        if (ii < (root->r()%P+1)*I-1) ii++;
+                        else {
+                            ii = 0;
+                            jj++;
+                        }
+                        current = (*root)(ii, jj);
+                        cnt = 0;
+                        if (current->getPoints(pnts, 0)) throw runtime_error("initialize called from wrong processor");
+                        goto start_again;
+                    }
+                }
             }
             MPI_Irecv( buf+j, 1, MPI_INT, j, 
                 TAG_NOTIFY, MPI_COMM_WORLD, &requests[j]); 
-
-
-            // cout << root->r() << ": startup: " << startup << ", cnt: " << cnt << endl;
 
         } 
     } 
@@ -539,8 +571,6 @@ int Bucket::calculateDelauney(int step){
     vector<Point> candidates;
 
     // cout << root->r() << ": in Delauney with step " << step << endl;
-
-
     if (step == 0) it = 0;
     while (it <poly.points.size()) {
 
@@ -726,11 +756,8 @@ int Bucket::calculateDelauney(int step){
                     
                     poly.points.erase(poly.points.begin(), 
                         poly.points.begin()+first);
-                    
                 }
-
             }
-
 
             /* add new values */ 
             poly.addPoint(v);
@@ -763,10 +790,16 @@ int Bucket::calculateDelauney(int step){
         step = 2;
     }
 
-    cout << "****** Bucket (" <<i() << ", " << j() << ") FINISHED ******" << endl;
+    cout << "****** calculation finished for point " << poly.c << " in Bucket (" <<i() << ", " << j() << ") "  << endl;
     printList();
     // cout << root->r()  << ": " << poly << endl;
-    poly.printPoints(to_string(i()*1000+j()));
+
+
+    if (MAX_PROC < 1000 && MAX_PNTS <10) {
+        auto tmp = find(points.begin(), points.end(), static_cast<Point>(poly.c));
+        int index = distance(points.begin(), tmp);
+        poly.printPoints(to_string(i()*1000+j()*10+index));
+    } else throw runtime_error("too many processors or points per bucket");
     return 0;
 }
 

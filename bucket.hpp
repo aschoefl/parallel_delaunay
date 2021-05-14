@@ -18,7 +18,7 @@
 using namespace std;
 
 
-# define MAX_PNTS 10 // maximal points per bucket
+# define MAX_PNTS 9 // maximal points per bucket
 # define MAX_PROC 500
 # define TAG_NOTIFY 42
 # define TAG_DATA 1
@@ -130,7 +130,6 @@ public:
             int i = (r%P)*(N/P)+(N/P)/2;
             int j = (r/P)*(N/P)+(N/P)/2;
             cout << "create root with indices: ("<<i<<", "<<j<<")"<< endl;
-            // srand(r*static_cast<unsigned int>(time(nullptr))); // set different seed for each processor
             srand(r*42); // set different seed for each processor
             Bucket* tmp = new Bucket(i,j);
             root = tmp->self;
@@ -158,7 +157,6 @@ public:
     int i() const { return ind_i;}
     int j() const { return ind_j;}
     int r() const {return (ind_j)/(N/P)*P + (ind_i)/(N/P);}
-    // TODO: think about if return by value really is a good idea...
     int getPoints(vector<Point>& pnts, int stat);
     void printList();
     void doSomething();
@@ -206,9 +204,6 @@ private:
     int init_dir_i, init_dir_j, init_incr ;
     int di, dj, it;
     int test_ind;
-
-    
-
 };
 
 class BoundaryBucket: private Bucket {
