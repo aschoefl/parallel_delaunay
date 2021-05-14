@@ -29,36 +29,26 @@ file_dir = '/home/ams/Studium/Parallel Computations/project/parallel_delaunay/ou
 #     myfile.close()
 
 
-
+ind_points = 0
+ind_delauney = 0
 # for k in range(0,4):
 if True:
-    k = 0
-    add = N
-    plt.figure(k)
-    myfile = open(file_dir+'/'+'points'+str(k)+'.txt', 'rt')
+    plt.figure(ind_delauney)
+    myfile = open(file_dir+'/'+'points'+str(ind_points)+'.txt', 'rt')
     data = myfile.read()
     pnts = np.array(ast.literal_eval(data))
     plt.scatter(pnts[:,0], pnts[:,1], label="pnts", color="grey")
     points = pnts
 
-    try:
-        myfile = open(file_dir+'/'+'polyPoints'+str(k+add)+'.txt', 'rt')
-    except:
-        pass
-        # continue
+    myfile = open(file_dir+'/'+'polyPoints'+str(ind_delauney)+'.txt', 'rt')
     data = myfile.read()
     pnts = np.array(ast.literal_eval(data))
     center = pnts[0,:]
     plt.scatter(pnts[1:,0], pnts[1:,1], label="poly", color="lime")
     plt.scatter(pnts[0,0], pnts[0,1], label="center", color="red")
-    # if k==3: plt.scatter(0.375, 0.875)
-    # if k==1: 
-    #     plt.scatter(0.875, 0.875)
-        # plt.scatter((0.875+pnts[0,0])/2, (0.875+pnts[0,1])/2)
-    # v = np.array([(0.5, 0.75), (0, -0.125), (0.375, 0.625), (0.625, 0.375), (0.875, 0.625)])
-    # plt.plot(v[:,0], v[:,1])
 
-    myfile = open(file_dir+'/'+'voronoiPoints'+str(k+add)+'.txt', 'rt')
+
+    myfile = open(file_dir+'/'+'voronoiPoints'+str(ind_delauney)+'.txt', 'rt')
     data = myfile.read()
     pnts = np.array(ast.literal_eval(data))
     plt.plot(pnts[:,0], pnts[:,1], label="voronoi", color = "orange")

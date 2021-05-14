@@ -528,17 +528,18 @@ int Bucket::initialize(int step) {
 
     /* calculate voronoi points */
     poly.calculateVoronoi();
-    poly.printPoints(to_string(root->r()));
-    printList();
+    // poly.printPoints(to_string(root->r()));
+    // printList();
     // cout << "****** Proc " << r() << " initialize finished ******" << endl;
-
     return 0;
 }
 
 int Bucket::calculateDelauney(int step){ 
-    // return 0;
-        // cout << root->r() << ": in Delauney with step " << step << endl;
+
     vector<Point> candidates;
+
+    // cout << root->r() << ": in Delauney with step " << step << endl;
+
 
     if (step == 0) it = 0;
     while (it <poly.points.size()) {
@@ -576,13 +577,16 @@ int Bucket::calculateDelauney(int step){
                     // cout << root->r() << ": after getPoints with " << 
                     //     "di: " << di << ", dj: "<< dj<< endl;
                 }
-                if (candidates.empty()) cout << root->r() << ": candidates empty" << endl;
+
                 for (auto p : candidates) {
                     /* add if in right range and not already in points or center*/
                     if (Point::dist(p,pnt) < rad 
                     && std::find(poly.points.begin(), poly.points.end(), p) == poly.points.end()
                     && p!=poly.c) {
                         poly.V.push_back(p);
+                        /* brak if one point is found */
+                        di = n+1;
+                        dj = n+1;
                         break;
                     }
                 }
@@ -590,17 +594,14 @@ int Bucket::calculateDelauney(int step){
         }
         
         if (poly.V.empty()) {
-            cout << root->r() << "." << it << ":  V is empty" << endl;
+            // cout << root->r() << "." << it << ":  V is empty" << endl;
             it++;
         } else {
-        // while (!poly.V.empty()) {
 
             Point v = poly.V.back();
-            // poly.V.pop_back();
-            // poly.V.clear();
-
             Point a = (poly.c+v)/2;
             Point b = a + Point((v-a).y, (a-v).x);
+
             /* returns true if p in Hv */
             auto inHv = [&a, &b, this](Point& p) {
                 /*  check if poly.c and p are in the same half plane defined by a and b */
@@ -645,10 +646,9 @@ int Bucket::calculateDelauney(int step){
                     inHv(poly.voronoi[k])) last = k;   
             }
 
-            cout << endl << root->r()  << "." << it 
-            << " of "<< poly.points.size() << " v: " << v <<" with " << endl << poly << endl;
-            cout << root->r() << "." << it << ": last = " << last << " first = " << first << endl; 
-
+            // cout << endl << root->r()  << "." << it 
+            // << " of "<< poly.points.size() << " v: " << v <<" with " << endl << poly << endl;
+            // cout << root->r() << "." << it << ": last = " << last << " first = " << first << endl; 
 
             Point o1, o2;
             if(!circumcenter(o1, static_cast<Point>(poly.points[ind(last+1)]), v, static_cast<Point>(poly.c))) {
@@ -684,14 +684,14 @@ int Bucket::calculateDelauney(int step){
            
             /* delete points */
             if (ind(last+1) == ind(first-1)) { /* only one voronoi point outside */
-                cout << root->r() << "." << it << ": erase voronoi pnt " << poly.voronoi[ind(last+1)] << endl; 
+                // cout << root->r() << "." << it << ": erase voronoi pnt " << poly.voronoi[ind(last+1)] << endl; 
                 poly.voronoi.erase(poly.voronoi.begin()+ind(last+1));
                 poly.radii.erase(poly.radii.begin()+ind(last+1));
 
             }  else { /* more than one point outside */
 
-                cout << root->r() << "." << it << ": erase voronoi pnts " << poly.voronoi[ind(last+1)]  
-                << " to " <<  poly.voronoi[first] << endl; 
+                // cout << root->r() << "." << it << ": erase voronoi pnts " << poly.voronoi[ind(last+1)]  
+                // << " to " <<  poly.voronoi[first] << endl; 
                 
                 if (ind(last+1) < first) {
                     poly.voronoi.erase(poly.voronoi.begin()+ind(last+1), 
@@ -729,26 +729,8 @@ int Bucket::calculateDelauney(int step){
                     
                 }
 
-                // if (different) {
-                //     // cout << root->r() << ": poly after " << poly << endl;
-                //     last = old_size-1;
-                //     // cout << root->r() << ": last = " << last << endl;
-
-                // }
-
             }
 
-            // if (!different) {
-            // /* insert new points */
-            // poly.voronoi.insert(poly.voronoi.begin()+ind(last+1),o2);
-            // poly.radii.insert(poly.radii.begin()+ind(last+1),Point::dist(static_cast<Point>(poly.c), o2));
-            // poly.voronoi.insert(poly.voronoi.begin()+ind(last+1),o1);
-            // poly.radii.insert(poly.radii.begin()+ind(last+1),Point::dist(static_cast<Point>(poly.c), o1));
-            
-            // } else {
-            //     cout << root->r() << ": poly after " << poly << endl;
-            //     getchar();
-            // }
 
             /* add new values */ 
             poly.addPoint(v);
@@ -757,7 +739,7 @@ int Bucket::calculateDelauney(int step){
 
             /* v is first entry */
             if (index == 0) { 
-                cout << root->r() << "." << it << ": case 1" << endl;
+                // cout << root->r() << "." << it << ": case 1" << endl;
 
                 poly.voronoi.push_back(o1);
                 poly.voronoi.insert(poly.voronoi.begin(), o2);
@@ -768,24 +750,23 @@ int Bucket::calculateDelauney(int step){
 
             } else {
 
-                cout << root->r() << "." << it << ": case 2" << endl;
+                // cout << root->r() << "." << it << ": case 2" << endl;
                 poly.voronoi.insert(poly.voronoi.begin()+index-1,o2);
                 poly.radii.insert(poly.radii.begin()+index-1,Point::dist(v, o2));
                 poly.voronoi.insert(poly.voronoi.begin()+index-1,o1);
                 poly.radii.insert(poly.radii.begin()+index-1,Point::dist(v, o1));
 
                 it = index-1;
-
             }
         }
         
         step = 2;
     }
 
-    cout << "****** Proc " << root->r() << " FINISHED ******" << endl;
+    cout << "****** Bucket (" <<i() << ", " << j() << ") FINISHED ******" << endl;
     printList();
-    cout << root->r()  << ": " << poly << endl;
-    poly.printPoints(to_string(root->r()+P*P));
+    // cout << root->r()  << ": " << poly << endl;
+    poly.printPoints(to_string(i()*1000+j()));
     return 0;
 }
 
