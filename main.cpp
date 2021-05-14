@@ -17,7 +17,7 @@ using namespace std;
 int main ( int argc, char *argv[] ) {
 
     /* initiate variables */
-    Bucket::N = 4;
+    Bucket::N = 20;
     int r, R;
 
     /* Initialize MPI */

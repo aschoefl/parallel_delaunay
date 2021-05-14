@@ -231,8 +231,6 @@ void Bucket::addPoint(double x, double y) {
 
 int Bucket::fillCoordinates(int stat){
 
-    // MPI_Request req;
-
     if (!(coordinates.empty())) return 0;
 
     if (r() != root->r()) {
@@ -394,7 +392,8 @@ void Bucket::doSomething() {
     for (ii = root->r()%P*I; ii<(root->r()%P+1)*I; ii++) {
         for (jj = root->r()/P*I; jj<(root->r()/P+1)*I; jj++) {
             current = (*root)(ii, jj);
-            if (current->getPoints(pnts, 0)) throw runtime_error("initialize called from wrong processor");
+            if (current->getPoints(pnts, 0)) 
+                throw runtime_error("initialize for "+to_string(ii)+","+to_string(jj)+" called from wrong processor "+to_string(current->r()));
             cnt = 0;
 
             while (!startup && cnt < pnts.size()) {
@@ -402,7 +401,7 @@ void Bucket::doSomething() {
                     if (step == 0)
                         current->poly = move(Polygon(pnts[cnt]));
                     step = current->initialize(step);
-                    if (step == 0) { // init has finished
+                    if (step == 0) { /* init has finished */
                         init = false;
                     } else {
                         startup = true;
@@ -410,7 +409,7 @@ void Bucket::doSomething() {
                     }
                 } if (!init) {
                     step = current->calculateDelauney(step);
-                    if (step == 0) { // delauney has finished
+                    if (step == 0) { /* delauney has finished */
                         cnt++;
                         init = true;
                     } else {
@@ -482,12 +481,13 @@ void Bucket::doSomething() {
                     } else {
                         if (ii < (root->r()%P+1)*I-1) ii++;
                         else {
-                            ii = 0;
+                            ii = root->r()%P*I;
                             jj++;
                         }
                         current = (*root)(ii, jj);
                         cnt = 0;
-                        if (current->getPoints(pnts, 0)) throw runtime_error("initialize called from wrong processor");
+                        if (current->getPoints(pnts, 0)) 
+                            throw runtime_error("initialize for "+to_string(ii)+","+to_string(jj)+" called from wrong processor "+to_string(current->r()));
                         goto start_again;
                     }
                 }
