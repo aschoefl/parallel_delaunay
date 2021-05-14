@@ -361,8 +361,6 @@ MPI_Recv(
 
 */
 void Bucket::doSomething() {
-    if (running) throw runtime_error("already running");
-    running = true;
 
     MPI_Request requests[MAX_PROC]; 
     MPI_Status  statuses[MAX_PROC]; 
@@ -376,6 +374,7 @@ void Bucket::doSomething() {
                 TAG_NOTIFY, MPI_COMM_WORLD, &requests[i] ); 
     bool startup = false;
     bool init = true;
+    int finished = 0;
 
     vector<Point> pnts;
     int cnt = 0; // to iterate through pnts
@@ -425,8 +424,18 @@ void Bucket::doSomething() {
         if (startup) break;
     }
 
-    // TODO: what if running stops and how to do that?
-    while(running) { 
+    if (!startup) {
+        if (P==0) return;
+        if (root->r() == 0) finished++;
+        else {
+            int tmp = -42;
+            MPI_Send(&tmp,1,MPI_INT,0,TAG_NOTIFY,MPI_COMM_WORLD);
+        }
+    }
+
+    bool cond = true;
+    while(cond) { 
+        
         MPI_Waitsome( size, requests, &ndone, indices, statuses ); 
         for (auto i=0; i<ndone; i++) { 
             auto j = indices[i]; 
@@ -463,7 +472,13 @@ void Bucket::doSomething() {
                 } else {
                     /* build a for loop like increase */
                     if (ii == (root->r()%P+1)*I-1 && jj==(root->r()/P+1)*I-1) {
+                        if (root->r() == 0) finished++;
+                        else {
+                            int tmp = -42;
+                            MPI_Send(&tmp,1,MPI_INT,0,TAG_NOTIFY,MPI_COMM_WORLD);
+                        }
                         cout <<  "------ PROCESSOR " << root->r() <<" FINISHED ------" << endl;
+                        
                     } else {
                         if (ii < (root->r()%P+1)*I-1) ii++;
                         else {
@@ -477,9 +492,29 @@ void Bucket::doSomething() {
                     }
                 }
             }
+            else if (buf[j] == -42 && r()==0) {
+                finished++;
+                if (finished == P*P) {
+                    int tmp = -43;
+                    MPI_Send(&tmp,1,MPI_INT,1,TAG_NOTIFY,MPI_COMM_WORLD);
+                    cond = false;
+                    break;
+                }
+            } else if (buf[j] == -43) {
+                if (r() == P*P-1) {
+                    cond = false;
+                    break;
+                }
+                if (r() < P*P-1) {
+                    int tmp = -43;
+                    MPI_Send(&tmp,1,MPI_INT,r()+1,TAG_NOTIFY,MPI_COMM_WORLD);
+                    cond = false;
+                    break;
+                }
+            }
+
             MPI_Irecv( buf+j, 1, MPI_INT, j, 
                 TAG_NOTIFY, MPI_COMM_WORLD, &requests[j]); 
-
         } 
     } 
 }

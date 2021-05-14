@@ -48,6 +48,7 @@ int main ( int argc, char *argv[] ) {
 
     shared_ptr<Bucket> root = Bucket::createRoot(r);
     root->doSomething();
+    cout << root->r() << ": all done" << endl;
     // root->test();
 
     MPI_Finalize();

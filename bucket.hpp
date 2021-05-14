@@ -188,7 +188,6 @@ private:
     vector<shared_ptr<Bucket>> neighbours = {nullptr,nullptr,nullptr,nullptr,
         nullptr,nullptr,nullptr,nullptr }; 
     bool is_bnd = 1;
-    bool running = 0;
 
     /*** private methods ***/
     void addPoint(double x, double y);
