@@ -273,31 +273,32 @@ int Bucket::fillCoordinates(int stat){
     int cnt = rand() % (MAX_PNTS+1);
     for (auto k=0; k<10; k++)
         cnt = max(min(cnt, rand() % (MAX_PNTS+1)),1);
+
+    coordinates.push_back(cnt); // set amount of points 
     
     auto xmin = i()/static_cast<double>(N);
     auto xmax = (i()+1)/static_cast<double>(N);
     auto ymin = j()/static_cast<double>(N);
     auto ymax = (j()+1)/static_cast<double>(N);
-    // coordinates.push_back(cnt); // set amount of points 
 
     /* assign random coordinates in right bucket */
-    // for (auto k=0; k<cnt; k++){
-    //     auto x = xmin + static_cast<double>(rand())/( static_cast<double>(RAND_MAX/(xmax-xmin)));
-    //     auto y = ymin + static_cast<double>(rand())/( static_cast<double>(RAND_MAX/(ymax-ymin)));
-    //     addPoint(x,y);
-    //     coordinates.push_back(x);
-    //     coordinates.push_back(y);
-    // }
+    for (auto k=0; k<cnt; k++){
+        auto x = xmin + static_cast<double>(rand())/( static_cast<double>(RAND_MAX/(xmax-xmin)));
+        auto y = ymin + static_cast<double>(rand())/( static_cast<double>(RAND_MAX/(ymax-ymin)));
+        addPoint(x,y);
+        coordinates.push_back(x);
+        coordinates.push_back(y);
+    }
 
-    auto x = (xmax+xmin)/2;
-    auto y = (ymax+ymin)/2;
-    addPoint(x, y);
-    addPoint(x+0.01, y+0.05);
-    coordinates.push_back(2); // amount of points
-    coordinates.push_back(x);
-    coordinates.push_back(y);
-    coordinates.push_back(x+0.01);
-    coordinates.push_back(y+0.05);
+    // auto x = (xmax+xmin)/2;
+    // auto y = (ymax+ymin)/2;
+    // addPoint(x, y);
+    // addPoint(x+0.01, y+0.05);
+    // coordinates.push_back(2); // amount of points
+    // coordinates.push_back(x);
+    // coordinates.push_back(y);
+    // coordinates.push_back(x+0.01);
+    // coordinates.push_back(y+0.05);
 
     return 0; 
     // cout << "filled coordinates of (" << i()<<", "<<j()<<
@@ -582,21 +583,20 @@ int Bucket::calculateDelauney(int step){
                     && std::find(poly.points.begin(), poly.points.end(), p) == poly.points.end()
                     && p!=poly.c) {
                         poly.V.push_back(p);
-                        // break;
+                        break;
                     }
                 }
             }
         }
         
         if (poly.V.empty()) {
+            cout << root->r() << "." << it << ":  V is empty" << endl;
             it++;
-            step=2;
-            continue;
         } else {
         // while (!poly.V.empty()) {
 
             Point v = poly.V.back();
-            poly.V.pop_back();
+            // poly.V.pop_back();
             // poly.V.clear();
 
             Point a = (poly.c+v)/2;
@@ -650,7 +650,6 @@ int Bucket::calculateDelauney(int step){
             cout << root->r() << "." << it << ": last = " << last << " first = " << first << endl; 
 
 
-            /* delete points */
             Point o1, o2;
             if(!circumcenter(o1, static_cast<Point>(poly.points[ind(last+1)]), v, static_cast<Point>(poly.c))) {
                 cout << root->r() << ": circumcenter problem between " <<
@@ -667,7 +666,6 @@ int Bucket::calculateDelauney(int step){
                 break;
             }
 
-
             if (!circumcenter(o2, static_cast<Point>(poly.points[first]), v, static_cast<Point>(poly.c)) ){
                 cout << root->r() << ": circumcenter problem between " <<
                      poly.points[first] << v << static_cast<Point>(poly.c) << endl;
@@ -683,14 +681,14 @@ int Bucket::calculateDelauney(int step){
                 step = 2;
                 break;
             }
-            /* only one voronoi point outside */
-            if (ind(last+1) == ind(first-1)) {
-
+           
+            /* delete points */
+            if (ind(last+1) == ind(first-1)) { /* only one voronoi point outside */
                 cout << root->r() << "." << it << ": erase voronoi pnt " << poly.voronoi[ind(last+1)] << endl; 
                 poly.voronoi.erase(poly.voronoi.begin()+ind(last+1));
                 poly.radii.erase(poly.radii.begin()+ind(last+1));
 
-            } else { /* more than one point outside */
+            }  else { /* more than one point outside */
 
                 cout << root->r() << "." << it << ": erase voronoi pnts " << poly.voronoi[ind(last+1)]  
                 << " to " <<  poly.voronoi[first] << endl; 
@@ -752,6 +750,7 @@ int Bucket::calculateDelauney(int step){
             //     getchar();
             // }
 
+            /* add new values */ 
             poly.addPoint(v);
             auto tmp = find(poly.points.begin(), poly.points.end(), v);
             int index = distance(poly.points.begin(), tmp);
@@ -765,7 +764,7 @@ int Bucket::calculateDelauney(int step){
                 poly.radii.push_back(Point::dist(v, o1));
                 poly.radii.insert(poly.radii.begin(), Point::dist(v, o2));
 
-                it = poly.points.size()-1;
+                it = 0; // TODO: not perfect
 
             } else {
 
@@ -778,10 +777,6 @@ int Bucket::calculateDelauney(int step){
                 it = index-1;
 
             }
-
-            // if (poly.V.empty()) {
-            //     it++;
-            // } 
         }
         
         step = 2;

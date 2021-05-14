@@ -30,7 +30,9 @@ file_dir = '/home/ams/Studium/Parallel Computations/project/parallel_delaunay/ou
 
 
 
-for k in range(0,4):
+# for k in range(0,4):
+if True:
+    k = 0
     add = N
     plt.figure(k)
     myfile = open(file_dir+'/'+'points'+str(k)+'.txt', 'rt')
@@ -39,12 +41,11 @@ for k in range(0,4):
     plt.scatter(pnts[:,0], pnts[:,1], label="pnts", color="grey")
     points = pnts
 
-
-
     try:
         myfile = open(file_dir+'/'+'polyPoints'+str(k+add)+'.txt', 'rt')
     except:
-        continue
+        pass
+        # continue
     data = myfile.read()
     pnts = np.array(ast.literal_eval(data))
     center = pnts[0,:]
@@ -67,12 +68,10 @@ for k in range(0,4):
     plt.xticks([ i/float(N) for i in range(0,N)])
     plt.yticks([ i/float(N) for i in range(0,N)])
 
-
-
     plt.legend()
     plt.show()
 
-if False:
+if True:
     plt.figure()
     tri = Delaunay(points)
     plt.triplot(points[:,0], points[:,1], tri.simplices.copy())
