@@ -271,30 +271,29 @@ int Bucket::fillCoordinates(int stat){
     // for (auto k=0; k<10; k++)
     //     cnt = max(min(cnt, rand() % (MAX_PNTS+1)),1);
 
-    int cnt = 1;
-    coordinates.push_back(cnt); // set amount of points 
+    // coordinates.push_back(cnt); // set amount of points 
     
     auto xmin = i()/static_cast<double>(N);
     auto xmax = (i()+1)/static_cast<double>(N);
     auto ymin = j()/static_cast<double>(N);
     auto ymax = (j()+1)/static_cast<double>(N);
 
-    /* assign random coordinates in right bucket */
-    for (auto k=0; k<cnt; k++){
-        auto x = xmin + static_cast<double>(rand())/( static_cast<double>(RAND_MAX/(xmax-xmin)));
-        auto y = ymin + static_cast<double>(rand())/( static_cast<double>(RAND_MAX/(ymax-ymin)));
-        addPoint(x,y);
-        coordinates.push_back(x);
-        coordinates.push_back(y);
-    }
+    // /* assign random coordinates in right bucket */
+    // for (auto k=0; k<cnt; k++){
+    //     auto x = xmin + static_cast<double>(rand())/( static_cast<double>(RAND_MAX/(xmax-xmin)));
+    //     auto y = ymin + static_cast<double>(rand())/( static_cast<double>(RAND_MAX/(ymax-ymin)));
+    //     addPoint(x,y);
+    //     coordinates.push_back(x);
+    //     coordinates.push_back(y);
+    // }
 
-    // auto x = (xmax+xmin)/2;
-    // auto y = (ymax+ymin)/2;
-    // addPoint(x, y);
+    auto x = (xmax+xmin)/2;
+    auto y = (ymax+ymin)/2;
+    addPoint(x, y);
     // addPoint(x+0.01, y+0.05);
-    // coordinates.push_back(2); // amount of points
-    // coordinates.push_back(x);
-    // coordinates.push_back(y);
+    coordinates.push_back(1); // amount of points
+    coordinates.push_back(x);
+    coordinates.push_back(y);
     // coordinates.push_back(x+0.01);
     // coordinates.push_back(y+0.05);
 
@@ -340,7 +339,6 @@ int Bucket::getPoints(vector<Point>& pnts, int stat) {
 /* source for how to provide fairness:
 https://www.mcs.anl.gov/research/projects/mpi/tutorial/gropp/node93.html#Node93
 signatures
-
 MPI_Send(
     void* data,
     int count,
@@ -348,7 +346,6 @@ MPI_Send(
     int destination,
     int tag,
     MPI_Comm communicator)
-
 MPI_Recv(
     void* data,
     int count,
@@ -357,7 +354,6 @@ MPI_Recv(
     int tag,
     MPI_Comm communicator,
     MPI_Status* status)
-
 */
 void Bucket::doSomething() {
 
@@ -425,7 +421,10 @@ void Bucket::doSomething() {
     }
 
     if (!startup) {
-        if (P==1) return;
+        if (P==1) {
+            printList();
+            return;
+        }
         if (root->r() == 0) finished++;
         else {
             int tmp = -42;
@@ -518,6 +517,8 @@ void Bucket::doSomething() {
                 TAG_NOTIFY, MPI_COMM_WORLD, &requests[j]); 
         } 
     } 
+    printList();
+
 }
 
 /* return values:
@@ -607,7 +608,10 @@ int Bucket::calculateDelauney(int step){
     vector<Point> candidates;
 
     // cout << root->r() << ": in Delauney with step " << step << endl;
-    if (step == 0) it = 0;
+    if (step == 0) {
+        it = 0;
+        // no_good_candidate.clear();
+    }
     while (it <poly.points.size()) {
 
         auto rad = poly.radii[it];
@@ -647,10 +651,12 @@ int Bucket::calculateDelauney(int step){
                 for (auto p : candidates) {
                     /* add if in right range and not already in points or center*/
                     if (Point::dist(p,pnt) < rad 
-                    && std::find(poly.points.begin(), poly.points.end(), p) == poly.points.end()
-                    && p!=poly.c) {
+                    && find(poly.points.begin(), poly.points.end(), p) == poly.points.end()
+                    && p!=poly.c
+                    // && find(no_good_candidate.begin(), no_good_candidate.end(), p) == no_good_candidate.end()
+                    ){
                         poly.V.push_back(p);
-                        /* brak if one point is found */
+                        /* break if one point is found */
                         di = n+1;
                         dj = n+1;
                         break;
@@ -670,12 +676,13 @@ int Bucket::calculateDelauney(int step){
 
             /* returns true if p in Hv */
             auto inHv = [&a, &b, this](Point& p) {
+                double ths = 1e-16;
                 /*  check if poly.c and p are in the same half plane defined by a and b */
                 if (a.x == b.x) { 
-                    if (poly.c.x <= a.x && p.x <= a.x) {
+                    if (poly.c.x-ths <= a.x && p.x-ths <= a.x) {
                         return true;
                     }
-                    else if (poly.c.x >= a.x && p.x >= a.x) {
+                    else if (poly.c.x >= a.x-ths && p.x >= a.x-ths) {
                         return true;
                     }
                 } else {
@@ -684,11 +691,11 @@ int Bucket::calculateDelauney(int step){
                         return (a.y-b.y)/(a.x-b.x)*(x-b.x)+b.y;
                     };
                     /* poly.c in subgraph of h*/
-                    if (poly.c.y <= h(poly.c.x) && p.y <= h(p.x)) {
+                    if (poly.c.y-ths <= h(poly.c.x) && p.y-ths <= h(p.x)) {
                         return true;
                     }
                     /* poly.c in supergraph of h*/
-                    else if (poly.c.y >= h(poly.c.x) && p.y >= h(p.x)) {
+                    else if (poly.c.y >= h(poly.c.x)-ths && p.y >= h(p.x)-ths) {
                         return true;
                     }
                 }  
@@ -706,19 +713,29 @@ int Bucket::calculateDelauney(int step){
             int first = -1;
             int last = -1;
             for (int k = 0; k<old_size; k++) {
-                if (inHv(poly.voronoi[k]) && !inHv(poly.voronoi[ind(k-1)])) 
-                    first = k;
-                if (!inHv(poly.voronoi[ind(k+1)]) && inHv(poly.voronoi[k])) 
-                    last = k; 
-                cout << root->r()  << "." << it << ": k = " << k << " first = " << first << " last = " << last << endl;
+                if (inHv(poly.voronoi[k]) && 
+                    !inHv(poly.voronoi[ind(k-1)])) first = k;
+                if (!inHv(poly.voronoi[ind(k+1)]) && 
+                    inHv(poly.voronoi[k])) last = k;   
             }
+            
 
-            // cout << root->r() << "." << it << ": last = " << last << " first = " << first << endl; 
-            cout << root->r()  << "." << it 
-            << " of "<< poly.points.size() << endl <<"v =  " << v << endl 
+            cout << endl << root->r()  << "." << it 
+            << " of "<< poly.points.size() << endl 
+            << "v = " << v << endl 
+            << "a = " << a << endl
+            << "b = " << b << endl
             << "center = " << poly.c << endl
-            << "a = " << a << endl << "b = " << b << endl
-            << poly << endl << endl;
+            << poly << endl;
+            cout << root->r() << "." << it << ": last = " << last << " first = " << first << endl; 
+
+            if (first==-1 || last ==-1) {
+                cout << "no good candidate" << endl;
+                // no_good_candidate.push_back(v);
+                getchar();
+                step = 2;
+                continue;
+            }
 
             Point o1, o2;
             if(!circumcenter(o1, static_cast<Point>(poly.points[ind(last+1)]), v, static_cast<Point>(poly.c))) {
@@ -730,10 +747,12 @@ int Bucket::calculateDelauney(int step){
                     poly.addPoint(v);
                     poly.calculateVoronoi();
                 } else {
+                    // no_good_candidate.push_back(v);
                     it++;
                 }
                 step = 2;
-                break;
+                continue;
+                // break;
             }
 
             if (!circumcenter(o2, static_cast<Point>(poly.points[first]), v, static_cast<Point>(poly.c)) ){
@@ -746,10 +765,13 @@ int Bucket::calculateDelauney(int step){
                     poly.addPoint(v);
                     poly.calculateVoronoi();
                 } else {
+                    // no_good_candidate.push_back(v);
+
                     it++;
                 }
                 step = 2;
-                break;
+                continue;
+                // break;
             }
            
             /* delete points */
@@ -831,9 +853,7 @@ int Bucket::calculateDelauney(int step){
     }
 
     cout << "****** calculation finished for point " << poly.c << " in Bucket (" <<i() << ", " << j() << ") "  << endl;
-    printList();
     // cout << root->r()  << ": " << poly << endl;
-
 
     if (MAX_PROC < 1000 && MAX_PNTS <10) {
         auto tmp = find(points.begin(), points.end(), static_cast<Point>(poly.c));
@@ -880,7 +900,7 @@ void Polygon::addPoint(const Point& pin) {
     points.insert(pos, move(p));
 }
 
-void Polygon::calculateVoronoi(void) { // ToDo: spelling
+void Polygon::calculateVoronoi(void) {
 
     voronoi.clear();
     radii.clear();
@@ -905,7 +925,7 @@ std::ostream &operator<<(std::ostream &os, const Polygon &poly) {
     os << "]" << endl << "voronoi = [ " ;
     for (const auto& p: poly.voronoi)
         os << p << ", ";
-    os << "]" << endl << "radii =  [ " ;
+    os << "]" << endl << "radii = [ " ;
     for (const auto& p: poly.radii)
         os << p << ", ";
     os << "]";

@@ -203,6 +203,7 @@ private:
     int init_dir_i, init_dir_j, init_incr ;
     int di, dj, it;
     int test_ind;
+    vector<Point> no_good_candidate;
 };
 
 class BoundaryBucket: private Bucket {

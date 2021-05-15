@@ -18,7 +18,7 @@ file_dir = '/home/ams/Studium/Parallel Computations/project/parallel_delaunay/ou
 # os.system('mpiexec -n 4 delauney')
 # time.sleep(2)
 
-for k in range(0,4):
+for k in range(0,N):
     myfile = open(file_dir+'points'+str(k)+'.txt', 'rt')
     data = myfile.read()
     if k == 0:
@@ -33,16 +33,16 @@ plt.scatter(points[:,0], points[:,1], label="pnts", color="grey")
 plt.grid()
 plt.xticks([ i/float(N) for i in range(0,N)])
 plt.yticks([ i/float(N) for i in range(0,N)])
-plt.legend()
-plt.show()
+# plt.legend()
+# plt.show()
 
-ind_points = 3
-ind_delauney = 2000
+ind_points = 0
+ind_delauney = 7060
 # for k in range(0,4):
-if False:
-    plt.figure(ind_delauney)
+if True:
+    # plt.figure(ind_delauney)
 
-    myfile = open(file_dir+'/'+'polyPoints'+str(ind_delauney)+'.txt', 'rt')
+    myfile = open(file_dir+'polyPoints'+str(ind_delauney)+'.txt', 'rt')
     data = myfile.read()
     pnts = np.array(ast.literal_eval(data))
     center = pnts[0,:]
@@ -50,7 +50,7 @@ if False:
     plt.scatter(pnts[0,0], pnts[0,1], label="center", color="red")
 
 
-    myfile = open(file_dir+'/'+'voronoiPoints'+str(ind_delauney)+'.txt', 'rt')
+    myfile = open(file_dir+'voronoiPoints'+str(ind_delauney)+'.txt', 'rt')
     data = myfile.read()
     pnts = np.array(ast.literal_eval(data))
     plt.plot(pnts[:,0], pnts[:,1], label="voronoi", color = "orange")
