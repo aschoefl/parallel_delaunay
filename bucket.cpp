@@ -708,12 +708,16 @@ int Bucket::calculateDelauney(int step){
                 if (inHv(poly.voronoi[k]) && 
                     !inHv(poly.voronoi[ind(k-1)])) first = k;
                 if (!inHv(poly.voronoi[ind(k+1)]) && 
-                    inHv(poly.voronoi[k])) last = k;   
+                    inHv(poly.voronoi[k])) last = k; 
+                cout << root->r()  << "." << it << ": k = " << k << " first = " << first << " last = " << last << endl;
             }
 
-            // cout << endl << root->r()  << "." << it 
-            // << " of "<< poly.points.size() << " v: " << v <<" with " << endl << poly << endl;
             // cout << root->r() << "." << it << ": last = " << last << " first = " << first << endl; 
+            cout << root->r()  << "." << it 
+            << " of "<< poly.points.size() << endl <<"v =  " << v << endl 
+            << "center = " << poly.c << endl
+            << "a = " << a << endl << "b = " << b << endl
+            << poly << endl << endl;
 
             Point o1, o2;
             if(!circumcenter(o1, static_cast<Point>(poly.points[ind(last+1)]), v, static_cast<Point>(poly.c))) {
@@ -894,13 +898,13 @@ void Polygon::calculateVoronoi(void) { // ToDo: spelling
 }
 
 std::ostream &operator<<(std::ostream &os, const Polygon &poly) {
-    os << "points: [ ";
+    os << "points = [ ";
     for (const auto& p: poly.points)
         os << p << ", ";
-    os << "]" << endl << "voronoi: [ " ;
+    os << "]" << endl << "voronoi = [ " ;
     for (const auto& p: poly.voronoi)
         os << p << ", ";
-    os << "]" << endl << "radii: [ " ;
+    os << "]" << endl << "radii =  [ " ;
     for (const auto& p: poly.radii)
         os << p << ", ";
     os << "]";
