@@ -267,10 +267,11 @@ int Bucket::fillCoordinates(int stat){
 
     /* number of points in this bucket 
        pfusch distribution  */
-    int cnt = rand() % (MAX_PNTS+1);
-    for (auto k=0; k<10; k++)
-        cnt = max(min(cnt, rand() % (MAX_PNTS+1)),1);
+    // int cnt = rand() % (MAX_PNTS+1);
+    // for (auto k=0; k<10; k++)
+    //     cnt = max(min(cnt, rand() % (MAX_PNTS+1)),1);
 
+    int cnt = 1;
     coordinates.push_back(cnt); // set amount of points 
     
     auto xmin = i()/static_cast<double>(N);
@@ -705,10 +706,10 @@ int Bucket::calculateDelauney(int step){
             int first = -1;
             int last = -1;
             for (int k = 0; k<old_size; k++) {
-                if (inHv(poly.voronoi[k]) && 
-                    !inHv(poly.voronoi[ind(k-1)])) first = k;
-                if (!inHv(poly.voronoi[ind(k+1)]) && 
-                    inHv(poly.voronoi[k])) last = k; 
+                if (inHv(poly.voronoi[k]) && !inHv(poly.voronoi[ind(k-1)])) 
+                    first = k;
+                if (!inHv(poly.voronoi[ind(k+1)]) && inHv(poly.voronoi[k])) 
+                    last = k; 
                 cout << root->r()  << "." << it << ": k = " << k << " first = " << first << " last = " << last << endl;
             }
 

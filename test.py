@@ -18,6 +18,8 @@ a = (0.286692, 0.432846)
 b = (0.280959, 0.415517)
 points = [ (0.311819, 0.457669), (0.294037, 0.469799), (0.226632, 0.521761), (0.20404, 0.45074), (0.245476, 0.365896), (0.247831, 0.362722), (0.314423, 0.393222), ]
 voronoi =  [ (0.291262, 0.446633), (0.248499, 0.480427), (0.242817, 0.477508), (0.230454, 0.4111), (0.2854, 0.393042), (0.272555, 0.396688), (0.301009, 0.424956), ]
+
+
 points = np.array(points)
 voronoi = np.array(voronoi)
 center = np.array(center)
@@ -47,13 +49,13 @@ ax.plot(np.linspace(0,0.5), h(np.linspace(0,0.5)))
 ax.plot(np.linspace(0,0.5), f(np.linspace(0,0.5)))
 
 
-plt.scatter(voronoi[:,0], voronoi[:,1], label="voronoi", color="orange")
+ax.plot(voronoi[:,0], voronoi[:,1], '-o', label="voronoi", color="orange")
 ax.scatter(center[0], center[1], label="center", color="red")
 ax.scatter(v[0], v[1], label="candidate", color="blue")
 # ax.scatter(a[0], a[1], label="a", color = "pink")
 # ax.scatter(b[0], b[1], label="b", color = "purple")
 ax.set_aspect(aspect='equal')
-# plt.plot(points[:,0], points[:,1], label="pnts", color="lime")
+plt.plot(points[:,0], points[:,1], '-o', label="pnts", color="lime")
 # ax.legend()
 
 plt.show()
