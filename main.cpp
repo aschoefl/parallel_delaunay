@@ -6,19 +6,17 @@ mpiexec -n 4  delauney
 # include <cstdlib>
 # include <mpi.h>
 # include <cmath>
-# include "polygon.hpp"
 # include "point.hpp"
 # include "bucket.hpp"
-using namespace std;
+# include <chrono>
 
-// int main ( int argc, char *argv[] );
+using namespace std;
 
 
 int main ( int argc, char *argv[] ) {
 
-    /* initiate variables */
-    // Bucket::L = 1;
-    Bucket::N = 8;
+    /* initiate variables */    
+    Bucket::N = 9*16*4;
     int r, R;
 
     /* Initialize MPI */
@@ -30,26 +28,16 @@ int main ( int argc, char *argv[] ) {
     if (P-int(P) == 0.) Bucket::P = int(P);
     else throw runtime_error("sqrt of amount of processors must be int");
 
-    // vector<double> test;
-    // for (int i = 0; i<5; i++)
-    //     test.push_back(i);
-
-    // test.insert(test.begin()+5, 42);
-
-    // test.erase(test.begin()+3,test.end());
-    // while (test.size() > 3) {
-    //     test.pop_back();
-    // }
-
-    // for (int i = 0; i<test.size(); i++)
-    //     cout << test[i] << " ";
-    // cout << endl;
-
-    // cout << -1%6 <<endl;
+    cout << "P = " << Bucket::P << ", N = " << Bucket::N << endl;
 
     shared_ptr<Bucket> root = Bucket::createRoot(r);
+    auto start = chrono::high_resolution_clock::now();
     root->doSomething();
-    cout << root->r() << ": all done" << endl;
+    auto stop = chrono::high_resolution_clock::now();
+
+    auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
+
+    cout << "processor " << root->r() << " done in " << duration.count() << " microseconds" << endl;
     // root->test();
 
     MPI_Finalize();

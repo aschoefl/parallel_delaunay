@@ -3,13 +3,14 @@
 shared_ptr<Bucket> Bucket::bb = move(shared_ptr<Bucket>((Bucket*) new BoundaryBucket()));
 list<shared_ptr<Bucket>> Bucket::buckets;
 shared_ptr<Bucket> Bucket::root = nullptr;
-int Bucket::P=0 , Bucket::N=0;
+int Bucket::P=0 , Bucket::N=0, Bucket::total_points = 0;
 double Bucket::buffer[MAX_PNTS*2+1];
 
 bool evenstep = false;
 
 
 void Bucket::addToList(){
+    return;
     if (!(find(buckets.begin(), buckets.end(), self) != buckets.end()))
         buckets.push_back(self);
     // Point p(ind_i, ind_j);
@@ -78,7 +79,7 @@ void Bucket::addBucket(int dir){ // to be called from corner
 
     if (dir<0 || dir>7) throw ("invalid direction in addBucket");
     if (neighbours[dir] != nullptr) {
-        cout << "Neighbour already exists" << endl;
+        // cout << "Neighbour already exists" << endl;
         return;
     }
 
@@ -87,7 +88,7 @@ void Bucket::addBucket(int dir){ // to be called from corner
     getIndex(dir, i,j);
 
     if (indexOutOfBnds(i,j)) {
-        cout << root->r() << ": Indices ("<<i<<","<<j<<") out of bound in addBucket. No Bucket added" << endl;
+        // cout << root->r() << ": Indices ("<<i<<","<<j<<") out of bound in addBucket. No Bucket added" << endl;
         return;
     }
     // cout << "add Bucket with global indices ("<<i<<","<<j<<") in dir " << dir << endl;
@@ -267,33 +268,35 @@ int Bucket::fillCoordinates(int stat){
 
     /* number of points in this bucket 
        pfusch distribution  */
-    // int cnt = rand() % (MAX_PNTS+1);
-    // for (auto k=0; k<10; k++)
-    //     cnt = max(min(cnt, rand() % (MAX_PNTS+1)),1);
+    int cnt = rand() % (MAX_PNTS+1);
+    for (auto k=0; k<10; k++)
+        cnt = max(min(cnt, rand() % (MAX_PNTS+1)),1);
 
-    // coordinates.push_back(cnt); // set amount of points 
+    total_points += cnt;
+    // int cnt = 1;
+    coordinates.push_back(cnt); // set amount of points 
     
-    auto xmin = i()/static_cast<double>(N);
-    auto xmax = (i()+1)/static_cast<double>(N);
-    auto ymin = j()/static_cast<double>(N);
-    auto ymax = (j()+1)/static_cast<double>(N);
+    double xmin = i()/static_cast<double>(N);
+    double xmax = (i()+1)/static_cast<double>(N);
+    double ymin = j()/static_cast<double>(N);
+    double ymax = (j()+1)/static_cast<double>(N);
 
-    // /* assign random coordinates in right bucket */
-    // for (auto k=0; k<cnt; k++){
-    //     auto x = xmin + static_cast<double>(rand())/( static_cast<double>(RAND_MAX/(xmax-xmin)));
-    //     auto y = ymin + static_cast<double>(rand())/( static_cast<double>(RAND_MAX/(ymax-ymin)));
-    //     addPoint(x,y);
-    //     coordinates.push_back(x);
-    //     coordinates.push_back(y);
-    // }
+    /* assign random coordinates in right bucket */
+    for (auto k=0; k<cnt; k++){
+        double x = xmin + static_cast<double>(rand())/( static_cast<double>(RAND_MAX/(xmax-xmin)));
+        double y = ymin + static_cast<double>(rand())/( static_cast<double>(RAND_MAX/(ymax-ymin)));
+        addPoint(x,y);
+        coordinates.push_back(x);
+        coordinates.push_back(y);
+    }
 
-    auto x = (xmax+xmin)/2;
-    auto y = (ymax+ymin)/2;
-    addPoint(x, y);
-    // addPoint(x+0.01, y+0.05);
-    coordinates.push_back(1); // amount of points
-    coordinates.push_back(x);
-    coordinates.push_back(y);
+    // double x = (xmax+xmin)/2;
+    // double y = (ymax+ymin)/2;
+    // addPoint(x, y);
+    // // addPoint(x+0.01, y+0.05);
+    // coordinates.push_back(1); // amount of points
+    // coordinates.push_back(x);
+    // coordinates.push_back(y);
     // coordinates.push_back(x+0.01);
     // coordinates.push_back(y+0.05);
 
@@ -420,10 +423,11 @@ void Bucket::doSomething() {
         if (startup) break;
     }
 
+    bool cond = true;
+
     if (!startup) {
         if (P==1) {
-            printList();
-            return;
+            cond = false;
         }
         if (root->r() == 0) finished++;
         else {
@@ -432,7 +436,6 @@ void Bucket::doSomething() {
         }
     }
 
-    bool cond = true;
     while(cond) { 
         
         MPI_Waitsome( size, requests, &ndone, indices, statuses ); 
@@ -512,12 +515,13 @@ void Bucket::doSomething() {
                     break;
                 }
             }
-
             MPI_Irecv( buf+j, 1, MPI_INT, j, 
                 TAG_NOTIFY, MPI_COMM_WORLD, &requests[j]); 
         } 
     } 
-    printList();
+    if (N < 20) printList();
+    cout << "total_points = " << total_points << endl;
+
 
 }
 
@@ -599,7 +603,7 @@ int Bucket::initialize(int step) {
     poly.calculateVoronoi();
     // poly.printPoints(to_string(root->r()));
     // printList();
-    // cout << "****** Proc " << r() << " initialize finished ******" << endl;
+    // cout << "****** init finished for  Bucket (" <<i() << ", " << j() << ") "  << endl;
     return 0;
 }
 
@@ -610,17 +614,22 @@ int Bucket::calculateDelauney(int step){
     // cout << root->r() << ": in Delauney with step " << step << endl;
     if (step == 0) {
         it = 0;
-        // no_good_candidate.clear();
+        break_calculation = 0;
     }
-    while (it <poly.points.size()) {
+    while (it <poly.points.size() && break_calculation < 20) {
+        break_calculation++;
 
         auto rad = poly.radii[it];
         auto pnt = poly.voronoi[it];
         /* distance of buckets that can contain candidates */
-        int n = rad*N+1;
+        /* THIS IS NOT CORRECT actually it should be
+            int n = min(static_cast<int>(rad*N+1),N); 
+            but that was not working propperly
+         */
+        int n = min(static_cast<int>(rad*N+1),10);
         /* indices of bucket containing pnt */
-        int pi = pnt.x*N;
-        int pj = pnt.y*N; 
+        int pi = max(0,static_cast<int>(pnt.x*N));
+        int pj = min(static_cast<int>(pnt.y*N), N-1); 
 
         if (step==1) {
             goto resume;
@@ -628,8 +637,11 @@ int Bucket::calculateDelauney(int step){
 
         poly.V.clear();
         /* calculate Delauney neighbour candidates for pnt */
+        // cout << "pi = "<< pi << " pj = " << pj << endl;
+
         for (di=-n; di<n+1; di++) {
             for (dj=-n; dj<n+1; dj++) {
+
                 // cout << root->r() << ": di: " << di << ", dj: "<< dj<< endl;
                 if (indexOutOfBnds(pi+di, pj+dj)) {
                     // cout << root->r() << ": aob, di: " << di << ", dj: "<< dj<< endl;
@@ -646,8 +658,10 @@ int Bucket::calculateDelauney(int step){
                     (*self)(pi+di, pj+dj)->getPoints(candidates, 1);
                     // cout << root->r() << ": after getPoints with " << 
                     //     "di: " << di << ", dj: "<< dj<< endl;
+                } else {
+                    // cout << "after get pnts " << endl;
                 }
-
+                
                 for (auto p : candidates) {
                     /* add if in right range and not already in points or center*/
                     if (Point::dist(p,pnt) < rad 
@@ -662,8 +676,11 @@ int Bucket::calculateDelauney(int step){
                         break;
                     }
                 }
+                candidates.clear();
+                
             }
         }
+        // cout << "here 1" << endl;
         
         if (poly.V.empty()) {
             // cout << root->r() << "." << it << ":  V is empty" << endl;
@@ -671,6 +688,7 @@ int Bucket::calculateDelauney(int step){
         } else {
 
             Point v = poly.V.back();
+            poly.V.clear();
             Point a = (poly.c+v)/2;
             Point b = a + Point((v-a).y, (a-v).x);
 
@@ -720,19 +738,18 @@ int Bucket::calculateDelauney(int step){
             }
             
 
-            cout << endl << root->r()  << "." << it 
-            << " of "<< poly.points.size() << endl 
-            << "v = " << v << endl 
-            << "a = " << a << endl
-            << "b = " << b << endl
-            << "center = " << poly.c << endl
-            << poly << endl;
-            cout << root->r() << "." << it << ": last = " << last << " first = " << first << endl; 
+            // cout << endl << root->r()  << "." << it 
+            // << " of "<< poly.points.size() << endl 
+            // << "v = " << v << endl 
+            // << "a = " << a << endl
+            // << "b = " << b << endl
+            // << "center = " << poly.c << endl
+            // << poly << endl;
+            // cout << root->r() << "." << it << ": last = " << last << " first = " << first << endl; 
 
             if (first==-1 || last ==-1) {
-                cout << "no good candidate" << endl;
-                // no_good_candidate.push_back(v);
-                getchar();
+                // cout << "no good candidate in bucket (" << i() << ", " << j() << ")" << endl;
+                it++;
                 step = 2;
                 continue;
             }
@@ -752,7 +769,6 @@ int Bucket::calculateDelauney(int step){
                 }
                 step = 2;
                 continue;
-                // break;
             }
 
             if (!circumcenter(o2, static_cast<Point>(poly.points[first]), v, static_cast<Point>(poly.c)) ){
@@ -771,7 +787,6 @@ int Bucket::calculateDelauney(int step){
                 }
                 step = 2;
                 continue;
-                // break;
             }
            
             /* delete points */
@@ -780,7 +795,8 @@ int Bucket::calculateDelauney(int step){
                 poly.voronoi.erase(poly.voronoi.begin()+ind(last+1));
                 poly.radii.erase(poly.radii.begin()+ind(last+1));
 
-            }  else { /* more than one point outside */
+            }  
+            else { /* more than one point outside */
 
                 // cout << root->r() << "." << it << ": erase voronoi pnts " << poly.voronoi[ind(last+1)]  
                 // << " to " <<  poly.voronoi[first] << endl; 
@@ -835,7 +851,8 @@ int Bucket::calculateDelauney(int step){
                 poly.radii.push_back(Point::dist(v, o1));
                 poly.radii.insert(poly.radii.begin(), Point::dist(v, o2));
 
-                it = 0; // TODO: not perfect
+                it = poly.points.size()-1; // TODO: not perfect
+                // break;
 
             } else {
 
@@ -851,15 +868,13 @@ int Bucket::calculateDelauney(int step){
         
         step = 2;
     }
+    // cout << "****** calculation finished for point " << poly.c << " in Bucket (" <<i() << ", " << j() << ") " << endl;
 
-    cout << "****** calculation finished for point " << poly.c << " in Bucket (" <<i() << ", " << j() << ") "  << endl;
-    // cout << root->r()  << ": " << poly << endl;
-
-    if (MAX_PROC < 1000 && MAX_PNTS <10) {
-        auto tmp = find(points.begin(), points.end(), static_cast<Point>(poly.c));
-        int index = distance(points.begin(), tmp);
-        poly.printPoints(to_string(i()*1000+j()*10+index));
-    } else throw runtime_error("too many processors or points per bucket");
+    // if (MAX_PROC < 1000 && MAX_PNTS <10 && N<100) {
+    //     auto tmp = find(points.begin(), points.end(), static_cast<Point>(poly.c));
+    //     int index = distance(points.begin(), tmp);
+    //     poly.printPoints(to_string(i()*1000+j()*10+index));
+    // };
     return 0;
 }
 
@@ -894,7 +909,7 @@ void Polygon::addPoint(const Point& pin) {
         return s < p;
     });
     if (exists) {
-        cout << ": point already exists" << endl;
+        // cout << ": point already exists" << endl;
         return;
     } // if element alread exists don't add
     points.insert(pos, move(p));
@@ -947,7 +962,7 @@ void Polygon::printPoints(string no) {
         myfile << "]" << endl;
         myfile.close();
     }
-    else cout << "Unable to open file";
+    // else cout << "Unable to open file";
 
     myfile.open(path+"voronoiPoints"+no+".txt");
     if (myfile.is_open()) {

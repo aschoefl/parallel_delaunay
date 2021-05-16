@@ -119,6 +119,7 @@ public:
     static int P; // amount of processor R = P*P
     /* reveive buffer for MPI */
     static double buffer[MAX_PNTS*2+1];
+    static int total_points;
     /* make sure there is only one root 
     achtung pfusch
     */
@@ -129,13 +130,13 @@ public:
                 throw runtime_error("Maximal number of processors exceeded");
             int i = (r%P)*(N/P)+(N/P)/2;
             int j = (r/P)*(N/P)+(N/P)/2;
-            cout << "create root with indices: ("<<i<<", "<<j<<")"<< endl;
+            // cout << "create root with indices: ("<<i<<", "<<j<<")"<< endl;
             srand(r*42); // set different seed for each processor
             Bucket* tmp = new Bucket(i,j);
             root = tmp->self;
             return tmp->self;
         } 
-        cout << "root already exists" << endl;
+        // cout << "root already exists" << endl;
         return root;
     };
     static shared_ptr<Bucket> root;
@@ -202,8 +203,8 @@ private:
     Polygon poly;
     int init_dir_i, init_dir_j, init_incr ;
     int di, dj, it;
-    int test_ind;
-    vector<Point> no_good_candidate;
+    int break_calculation;
+    
 };
 
 class BoundaryBucket: private Bucket {
