@@ -141,14 +141,11 @@ public:
     };
     static shared_ptr<Bucket> root;
     static shared_ptr<Bucket> bb;
-    static list<shared_ptr<Bucket>> buckets; // just for debugging
 
     shared_ptr<Bucket> operator() (int i, int j) const;
 
-    void test(); //just for testing new functions
-
     inline void printNeighbours() const;
-    /* don't just return false, because of downcasing*/ 
+    /* don't just return false, because of downcasting */ 
     inline bool isBnd( ) {return is_bnd;};
     void getIndex(int const dir, int& i, int& j);
     inline bool indexOutOfBnds(int ii, int jj) const ;
@@ -159,7 +156,6 @@ public:
     int j() const { return ind_j;}
     int r() const {return (ind_j)/(N/P)*P + (ind_i)/(N/P);}
     int getPoints(vector<Point>& pnts, int stat);
-    void printList();
     void doSomething();
 
 /* TODO: make that nicer, not safe ? */
@@ -171,7 +167,6 @@ private:
     Bucket(int i, int j) : ind_i(i), ind_j(j) {
         self = move(shared_ptr<Bucket>(this));
         is_bnd = 0;
-        addToList();
     };
     Bucket(const Bucket&); // deactivate copy-ctor
     Bucket& operator=(const Bucket&); // deactivate assign
@@ -179,8 +174,7 @@ private:
     /*** private members ***/ 
     shared_ptr<Bucket> self; 
     /* global coordinates of points in order {cnt,x1,y1,..,xk,yk} 
-        where cnt is the amount of points in the vector
-    */
+        where cnt is the amount of points in the vector */
     vector<double> coordinates; 
     /* same points as point vector */
     vector<Point> points;
@@ -193,7 +187,6 @@ private:
     /*** private methods ***/
     void addPoint(double x, double y);
     void addBucket(int dir);
-    void addToList();
     int fillCoordinates(int stat);
     void sendCoordinates(int destination, int no_bucket);
     int calculateDelauney(int step);

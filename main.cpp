@@ -16,7 +16,7 @@ using namespace std;
 int main ( int argc, char *argv[] ) {
 
     /* initiate variables */    
-    Bucket::N = 9*16*4;
+    Bucket::N = 20;//9*16*4; 
     int r, R;
 
     /* Initialize MPI */
@@ -38,7 +38,6 @@ int main ( int argc, char *argv[] ) {
     auto duration = chrono::duration_cast<chrono::microseconds>(stop - start);
 
     cout << "processor " << root->r() << " done in " << duration.count() << " microseconds" << endl;
-    // root->test();
 
     MPI_Finalize();
     exit(0);

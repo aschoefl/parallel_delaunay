@@ -1,44 +1,11 @@
 # include "bucket.hpp"
 
 shared_ptr<Bucket> Bucket::bb = move(shared_ptr<Bucket>((Bucket*) new BoundaryBucket()));
-list<shared_ptr<Bucket>> Bucket::buckets;
 shared_ptr<Bucket> Bucket::root = nullptr;
 int Bucket::P=0 , Bucket::N=0, Bucket::total_points = 0;
 double Bucket::buffer[MAX_PNTS*2+1];
 
 bool evenstep = false;
-
-
-void Bucket::addToList(){
-    return;
-    if (!(find(buckets.begin(), buckets.end(), self) != buckets.end()))
-        buckets.push_back(self);
-    // Point p(ind_i, ind_j);
-    // if (!(find(buckets.begin(), buckets.end(), p) != buckets.end()))
-    //     buckets.push_back(move(p));
-}
-
-void Bucket::printList(){
-    string path = "outdata/";
-    ofstream myfile (path+"points"+to_string(r())+".txt");
-    if (myfile.is_open()) {
-        myfile << "[";
-        for (auto b : buckets) {
-            for (auto p: b->points)
-                myfile << p << ", ";
-        }
-        myfile << "]" << endl;
-        myfile.close();
-    }
-    else cout << "Unable to open file";
-
-    // buckets.sort();
-    // cout << "List of buckets [";
-    // for (auto p : buckets) 
-    //     cout << p << ", ";
-    // cout << "]" << endl;
-
-}
 
 inline int inc(int dir, int incr){
     if (incr < 0) throw runtime_error("invalid increment in inc, must be postive");
@@ -99,9 +66,6 @@ void Bucket::addBucket(int dir){ // to be called from corner
     /* work around the memory leaks */
     shared_ptr<Bucket> new_bucket = (new Bucket(i,j))->self;
 
-    // just for testing, but not working
-    // new_bucket->fillCoordinates();
-
     for (auto k = 0; k<8; k++){ 
         /* assign boundary buckets */
         new_bucket->getIndex(k,i,j);
@@ -109,7 +73,7 @@ void Bucket::addBucket(int dir){ // to be called from corner
             new_bucket->neighbours[k] = bb;
     }
 
-    for (auto k=0; k<8; k++) {
+    for (auto k=0; k<8; k++) { /* go counter clockwise until nullptr */
 
         /* set links to each other */
         current->neighbours[cd] = new_bucket; 
@@ -120,7 +84,7 @@ void Bucket::addBucket(int dir){ // to be called from corner
         else next_dir = inc(cd, 7);
         
         if (current->neighbours[next_dir] == nullptr || current->neighbours[next_dir]->isBnd()) {
-            if (inc(cd,7)%2) { // if previous dir is uneven
+            if (inc(cd,7)%2) { /* if previous dir is uneven */
                 next_dir = inc(cd, 7);
                 if (current->neighbours[next_dir] == nullptr || current->neighbours[next_dir]->isBnd())
                     break;
@@ -135,7 +99,7 @@ void Bucket::addBucket(int dir){ // to be called from corner
     }
     cd = dir; 
     current = self;
-    for (int k = 1; k<8; k++){ //go clockwise until nullptr
+    for (int k = 1; k<8; k++){ /* go clockwise until nullptr */
         /* go in next even dir */
         if(inc(cd,1)%2) next_dir = inc(cd, 2);
         else next_dir = inc(cd, 1);
@@ -193,10 +157,6 @@ shared_ptr<Bucket> Bucket::operator() (int i, int j) const{
         dir[6] = -(y+dir[7]);
     }
 
-    // cout << "dir: ";
-    // for (auto v : dir)
-    //    cout <<  v << " ";
-    // cout << endl;
 
     /* go to bucket of index and add if needed */
     shared_ptr<Bucket> current = self;
@@ -236,30 +196,23 @@ int Bucket::fillCoordinates(int stat){
 
     if (r() != root->r()) {
         if (stat == 0) {
+
             /* get data from right processor */
             int no_bucket = i()*N+j();
-            // cout << "send from " << root->r() << " to " << r() << endl;
-            MPI_Send(&no_bucket,1,MPI_INT,r(),TAG_NOTIFY,MPI_COMM_WORLD);//, &request);
-            // cout << root->r() << ": sent notification" << endl;
+            MPI_Send(&no_bucket,1,MPI_INT,r(),TAG_NOTIFY,MPI_COMM_WORLD);
             return 1;
-        } else if (stat == 1) {
+        } 
+        else if (stat == 1) {
+
+            /* receive and save points*/
             MPI_Recv(buffer,MAX_PNTS,MPI_DOUBLE,r(),TAG_DATA,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-            // cout << root->r() << ": received coords from " << r() << endl;
-            // MPI_Request req;
-            // int no_bucket = i()*N+j();
-            // MPI_Isend(&no_bucket,1,MPI_INT,r(),TAG_NOTIFY,MPI_COMM_WORLD, &req);
-            // MPI_Recv(buffer,MAX_PNTS,MPI_DOUBLE,r(),TAG_DATA,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-            // MPI_Request_free(&req);
 
             coordinates.push_back(buffer[0]);
-            // cout << root->r() << ": buffer[0]: " << buffer[0] 
-            //     << " from " << r()<< endl;
+
             for (auto k=0; k<2*buffer[0]; k+=2) {
                 coordinates.push_back(buffer[k+1]);
                 coordinates.push_back(buffer[k+2]);
                 addPoint(buffer[k+1],buffer[k+2]);
-                // cout << root->r() << ": add point " << Point(buffer[k+1],buffer[k+2]) 
-                // << " from " << r()<< endl;
             }
             
             return 0;
@@ -273,7 +226,6 @@ int Bucket::fillCoordinates(int stat){
         cnt = max(min(cnt, rand() % (MAX_PNTS+1)),1);
 
     total_points += cnt;
-    // int cnt = 1;
     coordinates.push_back(cnt); // set amount of points 
     
     double xmin = i()/static_cast<double>(N);
@@ -290,28 +242,21 @@ int Bucket::fillCoordinates(int stat){
         coordinates.push_back(y);
     }
 
-    // double x = (xmax+xmin)/2;
-    // double y = (ymax+ymin)/2;
-    // addPoint(x, y);
-    // // addPoint(x+0.01, y+0.05);
-    // coordinates.push_back(1); // amount of points
-    // coordinates.push_back(x);
-    // coordinates.push_back(y);
-    // coordinates.push_back(x+0.01);
-    // coordinates.push_back(y+0.05);
-
     return 0; 
     // cout << "filled coordinates of (" << i()<<", "<<j()<<
     // ") on processor "<<r()<<endl;
 
 }
 
+/* send points in bucket with number no_bucket to processor destination */
 void Bucket::sendCoordinates(int destination, int no_bucket) {
 
-    // cout << root->r() <<": in send coordinates" << endl;
+    if (root->r() != r()) throw("called from wrong processor");
+
     auto ii = no_bucket/N;
     auto jj = no_bucket%N; 
 
+    /* if the desired bucket is not the current bucket call function from right bucket */
     if (i() != ii || j() != jj ) {
         // cout << root->r() << ": wrong bucket" << endl;
         (*root)(ii,jj)->sendCoordinates(destination, no_bucket);
@@ -323,10 +268,16 @@ void Bucket::sendCoordinates(int destination, int no_bucket) {
 
     int tmp = -1;
     MPI_Send(&tmp,1,MPI_INT,destination,TAG_NOTIFY,MPI_COMM_WORLD);
-    MPI_Send(coordinates.data(), MAX_PNTS, MPI_DOUBLE, destination, 
-                TAG_DATA, MPI_COMM_WORLD);
+    MPI_Send(coordinates.data(), MAX_PNTS, MPI_DOUBLE, destination, TAG_DATA, MPI_COMM_WORLD);
 }
 
+/* get points of current bucket
+   return 0 if finished 
+   return 1 if waiting for data to be sent
+
+   points are written in pnts
+   the input stat indicates the status of the program
+*/
 int Bucket::getPoints(vector<Point>& pnts, int stat) {
     /* get or gerenate data if not available, 
     check if coordinates are empty because points can
@@ -341,24 +292,10 @@ int Bucket::getPoints(vector<Point>& pnts, int stat) {
 
 /* source for how to provide fairness:
 https://www.mcs.anl.gov/research/projects/mpi/tutorial/gropp/node93.html#Node93
-signatures
-MPI_Send(
-    void* data,
-    int count,
-    MPI_Datatype datatype,
-    int destination,
-    int tag,
-    MPI_Comm communicator)
-MPI_Recv(
-    void* data,
-    int count,
-    MPI_Datatype datatype,
-    int source,
-    int tag,
-    MPI_Comm communicator,
-    MPI_Status* status)
 */
 void Bucket::doSomething() {
+
+    if (self != root) throw("doSomething can only be called from root element");
 
     MPI_Request requests[MAX_PROC]; 
     MPI_Status  statuses[MAX_PROC]; 
@@ -368,8 +305,8 @@ void Bucket::doSomething() {
     int ndone;
     bool open_request = false;
     for (auto i=0; i<size; i++)  
-        MPI_Irecv( buf+i, 1, MPI_INT, i, 
-                TAG_NOTIFY, MPI_COMM_WORLD, &requests[i] ); 
+        MPI_Irecv( buf+i, 1, MPI_INT, i, TAG_NOTIFY, MPI_COMM_WORLD, &requests[i] ); 
+
     bool startup = false;
     bool init = true;
     int finished = 0;
@@ -381,15 +318,14 @@ void Bucket::doSomething() {
     vector<int> buf_buf;
 
     int I = N/P;
-    int ii, jj;
-    shared_ptr<Bucket> current; /* current bucket */
+    int ii, jj; /* global indec of current bucket */
+    shared_ptr<Bucket> current; /* pointer to current bucket */
 
-    /* always called from root processor, so there should be nothing to send */
-    // cout << root->r() << ": points in current bucket: " << pnts.size() << endl;
-    // cout << root->r() << ": ii = " << ii << ", jj = " << jj<< " ths: " << (root->r()%P+1)*I <<", " << (root->r()/P+1)*I << endl;
+    /* do computations until communication with other processors is required 
+    ( meaning some function returns 1) or everything is done */
 
-
-    for (ii = root->r()%P*I; ii<(root->r()%P+1)*I; ii++) {
+    /* iterate through buckets belonging to processor with rank root->r()*/
+    for (ii = root->r()%P*I; ii<(root->r()%P+1)*I; ii++) { 
         for (jj = root->r()/P*I; jj<(root->r()/P+1)*I; jj++) {
             current = (*root)(ii, jj);
             if (current->getPoints(pnts, 0)) 
@@ -407,7 +343,7 @@ void Bucket::doSomething() {
                         startup = true;
                         break;
                     }
-                } if (!init) {
+                } if (!init) { /* this is not an else!*/
                     step = current->calculateDelauney(step);
                     if (step == 0) { /* delauney has finished */
                         cnt++;
@@ -437,7 +373,7 @@ void Bucket::doSomething() {
     }
 
     while(cond) { 
-        
+
         MPI_Waitsome( size, requests, &ndone, indices, statuses ); 
         for (auto i=0; i<ndone; i++) { 
             auto j = indices[i]; 
@@ -472,8 +408,9 @@ void Bucket::doSomething() {
                         } 
                     }
                 } else {
-                    /* build a for loop like increase */
-                    if (ii == (root->r()%P+1)*I-1 && jj==(root->r()/P+1)*I-1) {
+                    
+                    /* calculation finished*/ 
+                    if (ii == (root->r()%P+1)*I-1 && jj==(root->r()/P+1)*I-1) { 
                         if (root->r() == 0) finished++;
                         else {
                             int tmp = -42;
@@ -481,7 +418,8 @@ void Bucket::doSomething() {
                         }
                         cout <<  "------ PROCESSOR " << root->r() <<" FINISHED ------" << endl;
                         
-                    } else {
+                    } 
+                    else { /* build a for loop like increase */
                         if (ii < (root->r()%P+1)*I-1) ii++;
                         else {
                             ii = root->r()%P*I;
@@ -489,7 +427,7 @@ void Bucket::doSomething() {
                         }
                         current = (*root)(ii, jj);
                         cnt = 0;
-                        if (current->getPoints(pnts, 0)) 
+                        if (current->getPoints(pnts, 0)) /* communication required */
                             throw runtime_error("initialize for "+to_string(ii)+","+to_string(jj)+" called from wrong processor "+to_string(current->r()));
                         goto start_again;
                     }
@@ -519,15 +457,13 @@ void Bucket::doSomething() {
                 TAG_NOTIFY, MPI_COMM_WORLD, &requests[j]); 
         } 
     } 
-    if (N < 20) printList();
-    cout << "total_points = " << total_points << endl;
-
-
+    cout << "in total " << total_points << " points on processor " << r() << endl;
 }
 
 /* return values:
    -------------- 
    0: completed
+   1: waiting for points to be sent
     
 */
 int Bucket::initialize(int step) {
@@ -554,16 +490,11 @@ int Bucket::initialize(int step) {
                 /* add ghost point if out of bounds */
                 if (indexOutOfBnds(ii+init_incr*init_dir_i,jj+init_incr*init_dir_j)) {
                     add(Point(max(init_dir_i, 0), max(init_dir_j,0)));
-                    // cout << root->r() << ": out of bnds" << endl;
                     break;
                 }
                 else if ((*self)(ii+init_incr*init_dir_i,jj+init_incr*init_dir_j)->getPoints(tmp, 0)) {
-                    // if (r() == 0) cout << root->r() << ": to be resumed" << endl;
                     return 1;
                     resume:
-                    // if (r() == 0)
-                    // cout << root->r() << ": after resume init_dir_i: "<< init_dir_i << ", init_dir_j: "
-                    //     << init_dir_j << ", init_incr: "<< init_incr << endl;
                     (*self)(ii+init_incr*init_dir_i,jj+init_incr*init_dir_j)->getPoints(tmp, 1);
                 }
                 
@@ -601,8 +532,6 @@ int Bucket::initialize(int step) {
 
     /* calculate voronoi points */
     poly.calculateVoronoi();
-    // poly.printPoints(to_string(root->r()));
-    // printList();
     // cout << "****** init finished for  Bucket (" <<i() << ", " << j() << ") "  << endl;
     return 0;
 }
@@ -664,10 +593,9 @@ int Bucket::calculateDelauney(int step){
                 
                 for (auto p : candidates) {
                     /* add if in right range and not already in points or center*/
-                    if (Point::dist(p,pnt) < rad 
+                    if (Point::dist(p,pnt)-1e-8 < rad 
                     && find(poly.points.begin(), poly.points.end(), p) == poly.points.end()
                     && p!=poly.c
-                    // && find(no_good_candidate.begin(), no_good_candidate.end(), p) == no_good_candidate.end()
                     ){
                         poly.V.push_back(p);
                         /* break if one point is found */
@@ -681,14 +609,20 @@ int Bucket::calculateDelauney(int step){
             }
         }
         // cout << "here 1" << endl;
-        
+
+        if (false) {
+            test:
+            break_calculation++;
+        }
+
         if (poly.V.empty()) {
             // cout << root->r() << "." << it << ":  V is empty" << endl;
             it++;
         } else {
 
             Point v = poly.V.back();
-            poly.V.clear();
+            poly.V.pop_back();
+            // poly.V.clear();
             Point a = (poly.c+v)/2;
             Point b = a + Point((v-a).y, (a-v).x);
 
@@ -748,10 +682,8 @@ int Bucket::calculateDelauney(int step){
             // cout << root->r() << "." << it << ": last = " << last << " first = " << first << endl; 
 
             if (first==-1 || last ==-1) {
-                // cout << "no good candidate in bucket (" << i() << ", " << j() << ")" << endl;
-                it++;
-                step = 2;
-                continue;
+                // cout << v << " is not a good candidate in bucket (" << i() << ", " << j() << ")" << endl;
+                goto test;
             }
 
             Point o1, o2;
@@ -765,10 +697,11 @@ int Bucket::calculateDelauney(int step){
                     poly.calculateVoronoi();
                 } else {
                     // no_good_candidate.push_back(v);
-                    it++;
+                    // it++;
                 }
-                step = 2;
-                continue;
+                goto test;
+                // step = 2;
+                // continue;
             }
 
             if (!circumcenter(o2, static_cast<Point>(poly.points[first]), v, static_cast<Point>(poly.c)) ){
@@ -782,11 +715,9 @@ int Bucket::calculateDelauney(int step){
                     poly.calculateVoronoi();
                 } else {
                     // no_good_candidate.push_back(v);
-
-                    it++;
+                    // it++;
                 }
-                step = 2;
-                continue;
+                goto test;
             }
            
             /* delete points */
@@ -851,7 +782,8 @@ int Bucket::calculateDelauney(int step){
                 poly.radii.push_back(Point::dist(v, o1));
                 poly.radii.insert(poly.radii.begin(), Point::dist(v, o2));
 
-                it = poly.points.size()-1; // TODO: not perfect
+                it = 0;
+                // it = poly.points.size()-1; // TODO: not perfect
                 // break;
 
             } else {
@@ -865,16 +797,15 @@ int Bucket::calculateDelauney(int step){
                 it = index-1;
             }
         }
-        
         step = 2;
     }
     // cout << "****** calculation finished for point " << poly.c << " in Bucket (" <<i() << ", " << j() << ") " << endl;
 
-    // if (MAX_PROC < 1000 && MAX_PNTS <10 && N<100) {
-    //     auto tmp = find(points.begin(), points.end(), static_cast<Point>(poly.c));
-    //     int index = distance(points.begin(), tmp);
-    //     poly.printPoints(to_string(i()*1000+j()*10+index));
-    // };
+    if (MAX_PROC < 1000 && MAX_PNTS <10 && N<20) {
+        auto tmp = find(points.begin(), points.end(), static_cast<Point>(poly.c));
+        int index = distance(points.begin(), tmp);
+        poly.printPoints(to_string(i()*1000+j()*10+index));
+    };
     return 0;
 }
 
