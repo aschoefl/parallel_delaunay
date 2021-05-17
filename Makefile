@@ -2,11 +2,6 @@
 
 CC = mpicxx
 TARGET = delauney
-OBJECTS = main.o polygon.o
-
-
-# all: $(OBJECTS)
-# 	$(CC) $(INCLUDES) $(CFLAGS) -o $(OBJECT_OUT) $(OBJECTS)
 
 all: main.o point.o bucket.o
 	$(CC) -o $(TARGET) main.o point.o bucket.o

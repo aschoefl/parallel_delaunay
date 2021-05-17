@@ -540,7 +540,6 @@ int Bucket::calculateDelauney(int step){
 
     vector<Point> candidates;
 
-    // cout << root->r() << ": in Delauney with step " << step << endl;
     if (step == 0) {
         it = 0;
         break_calculation = 0;
@@ -553,50 +552,34 @@ int Bucket::calculateDelauney(int step){
         /* distance of buckets that can contain candidates */
         /* THIS IS NOT CORRECT actually it should be
             int n = min(static_cast<int>(rad*N+1),N); 
-            but that was not working propperly
+            but that was extremely slow due to some other error choosing the points
+            I know it yields a wrong output...
          */
         int n = min(static_cast<int>(rad*N+1),10);
         /* indices of bucket containing pnt */
         int pi = max(0,static_cast<int>(pnt.x*N));
         int pj = min(static_cast<int>(pnt.y*N), N-1); 
 
-        if (step==1) {
-            goto resume;
-        }
-
-        poly.V.clear();
+        /* resume calculation at resume: */
+        if (step==1)  goto resume;
+        
         /* calculate Delauney neighbour candidates for pnt */
-        // cout << "pi = "<< pi << " pj = " << pj << endl;
-
+        poly.V.clear();
         for (di=-n; di<n+1; di++) {
             for (dj=-n; dj<n+1; dj++) {
 
-                // cout << root->r() << ": di: " << di << ", dj: "<< dj<< endl;
-                if (indexOutOfBnds(pi+di, pj+dj)) {
-                    // cout << root->r() << ": aob, di: " << di << ", dj: "<< dj<< endl;
-                    continue;
-                } 
+                if (indexOutOfBnds(pi+di, pj+dj)) continue;
                 if((*self)(pi+di, pj+dj)->getPoints(candidates, 0)) {
-                    // cout << root->r() << ": before return 1 with " << 
-                    //     "di: " << di << ", dj: "<< dj<< endl;
                     return 1;
-                    resume:
-                    // cout << root->r() << ": resume with " << 
-                    //     "di: " << di << ", dj: "<< dj<< endl;
-                    // cout << root->r() << ": after resume" << endl;
+                    resume: 
                     (*self)(pi+di, pj+dj)->getPoints(candidates, 1);
-                    // cout << root->r() << ": after getPoints with " << 
-                    //     "di: " << di << ", dj: "<< dj<< endl;
-                } else {
-                    // cout << "after get pnts " << endl;
-                }
+                } 
                 
                 for (auto p : candidates) {
                     /* add if in right range and not already in points or center*/
                     if (Point::dist(p,pnt)-1e-8 < rad 
                     && find(poly.points.begin(), poly.points.end(), p) == poly.points.end()
-                    && p!=poly.c
-                    ){
+                    && p!=poly.c){
                         poly.V.push_back(p);
                         /* break if one point is found */
                         di = n+1;
@@ -608,7 +591,6 @@ int Bucket::calculateDelauney(int step){
                 
             }
         }
-        // cout << "here 1" << endl;
 
         if (false) {
             test:
@@ -616,13 +598,12 @@ int Bucket::calculateDelauney(int step){
         }
 
         if (poly.V.empty()) {
-            // cout << root->r() << "." << it << ":  V is empty" << endl;
             it++;
-        } else {
+        } 
+        else {
 
             Point v = poly.V.back();
             poly.V.pop_back();
-            // poly.V.clear();
             Point a = (poly.c+v)/2;
             Point b = a + Point((v-a).y, (a-v).x);
 
@@ -682,8 +663,14 @@ int Bucket::calculateDelauney(int step){
             // cout << root->r() << "." << it << ": last = " << last << " first = " << first << endl; 
 
             if (first==-1 || last ==-1) {
-                // cout << v << " is not a good candidate in bucket (" << i() << ", " << j() << ")" << endl;
-                goto test;
+                
+                /* this is not the correct way to deal with the problem. 
+                It actually should never occure. However it did in various occations. WHY??
+                I think that is the main problem leading to the solution of the other bugs.*/ 
+                    
+                it++;
+                step = 2;
+                continue;
             }
 
             Point o1, o2;
@@ -695,13 +682,13 @@ int Bucket::calculateDelauney(int step){
                     poly.points.erase(poly.points.begin()+ind(last+1));
                     poly.addPoint(v);
                     poly.calculateVoronoi();
-                } else {
-                    // no_good_candidate.push_back(v);
-                    // it++;
+                } else { 
+                    /* this is not the correct way to deal with the problem 
+                    there could be another candidate in that needs to be considered too */ 
+                    it++;
                 }
-                goto test;
-                // step = 2;
-                // continue;
+                step = 2;
+                continue;
             }
 
             if (!circumcenter(o2, static_cast<Point>(poly.points[first]), v, static_cast<Point>(poly.c)) ){
@@ -713,24 +700,21 @@ int Bucket::calculateDelauney(int step){
                     poly.points.erase(poly.points.begin()+first);
                     poly.addPoint(v);
                     poly.calculateVoronoi();
-                } else {
-                    // no_good_candidate.push_back(v);
-                    // it++;
+                } else { 
+                    /* this is not the correct way to deal with the problem 
+                    there could be another candidate in that needs to be considered too */ 
+                    it++;
                 }
-                goto test;
+                step = 2;
+                continue;
             }
-           
             /* delete points */
             if (ind(last+1) == ind(first-1)) { /* only one voronoi point outside */
-                // cout << root->r() << "." << it << ": erase voronoi pnt " << poly.voronoi[ind(last+1)] << endl; 
                 poly.voronoi.erase(poly.voronoi.begin()+ind(last+1));
                 poly.radii.erase(poly.radii.begin()+ind(last+1));
 
             }  
             else { /* more than one point outside */
-
-                // cout << root->r() << "." << it << ": erase voronoi pnts " << poly.voronoi[ind(last+1)]  
-                // << " to " <<  poly.voronoi[first] << endl; 
                 
                 if (ind(last+1) < first) {
                     poly.voronoi.erase(poly.voronoi.begin()+ind(last+1), 
@@ -775,7 +759,6 @@ int Bucket::calculateDelauney(int step){
 
             /* v is first entry */
             if (index == 0) { 
-                // cout << root->r() << "." << it << ": case 1" << endl;
 
                 poly.voronoi.push_back(o1);
                 poly.voronoi.insert(poly.voronoi.begin(), o2);
@@ -783,12 +766,8 @@ int Bucket::calculateDelauney(int step){
                 poly.radii.insert(poly.radii.begin(), Point::dist(v, o2));
 
                 it = 0;
-                // it = poly.points.size()-1; // TODO: not perfect
-                // break;
-
             } else {
 
-                // cout << root->r() << "." << it << ": case 2" << endl;
                 poly.voronoi.insert(poly.voronoi.begin()+index-1,o2);
                 poly.radii.insert(poly.radii.begin()+index-1,Point::dist(v, o2));
                 poly.voronoi.insert(poly.voronoi.begin()+index-1,o1);
@@ -805,12 +784,13 @@ int Bucket::calculateDelauney(int step){
         auto tmp = find(points.begin(), points.end(), static_cast<Point>(poly.c));
         int index = distance(points.begin(), tmp);
         poly.printPoints(to_string(i()*1000+j()*10+index));
-    };
+    }
     return 0;
 }
 
 /********* POLYGON *********/
 
+/* returns false if circumcenter cannot be calculated */
 template <typename T> 
 bool circumcenter(T& ret, const T& a, const T& b, const T& c) {
     auto d = 2 * (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y));
@@ -830,8 +810,8 @@ void Polygon::addPoint(double p0, double p1) {
 
 void Polygon::addPoint(const Point& pin) {
     PointPoly p(this, pin);
-    // if (std::find(points.begin(), points.end(), p) != points.end())
-    //     return; 
+
+    /* order points according to overloaded operators in PolyPoint*/
     bool exists = false;
     auto pos = std::find_if(points.begin(), points.end(), [p,&exists](auto s) {
         if (s==p) {
@@ -842,10 +822,11 @@ void Polygon::addPoint(const Point& pin) {
     if (exists) {
         // cout << ": point already exists" << endl;
         return;
-    } // if element alread exists don't add
+    } /* if element alread exists don't add */
     points.insert(pos, move(p));
 }
 
+/* calculate voronoi points and radii */
 void Polygon::calculateVoronoi(void) {
 
     voronoi.clear();
@@ -906,40 +887,41 @@ void Polygon::printPoints(string no) {
     else cout << "Unable to open file";
 }
 
+/* order is counter clock wise*/
 bool Polygon::PointPoly::operator> (const Polygon::PointPoly& other) const {
     PointPoly a = *this-poly->c;
     PointPoly b = other-poly->c;
 
-    // to have a beginning (at angle == 0 in unit circle)
-    if (a.y>=0 && b.y<0) return 1;
-    if (a.y<0 && b.y>=0) return 0;
+    /* to have a beginning (at angle == 0 in unit circle) */
+    if (a.y>=0 && b.y<0) return true;
+    if (a.y<0 && b.y>=0) return false;
     if (a.y==0 && b.y==0) {
         if (a.x>0 || b.x>0) return a.x<b.x;
         else return a.x>b.x;
     }
 
-    // check order 
+    /* check order  */
     auto cross_prod = a.x*b.y-a.y*b.x;
-    if (cross_prod > 0) return 1;
-    if (cross_prod < 0) return 0;
+    if (cross_prod > 0) return true;
+    if (cross_prod < 0) return false;
 
-    // if points have same angle take nearer one first
+    /* if points have same angle take nearer one first */
     if (a.x*a.x+a.y*a.y < b.x*b.x+b.y*b.y) return 1;
     
-    return 0;
+    return false;
 }
 
 bool Polygon::PointPoly::operator>= (const Polygon::PointPoly& other) const {
-    if (*this>other || *this==other) return 1;
-    return 0;
+    if (*this>other || *this==other) return true;
+    return false;
 }
 
 bool Polygon::PointPoly::operator< (const Polygon::PointPoly& other) const {
-    if (!(*this>=other)) return 1;
-    return 0;
+    if (!(*this>=other)) return true;
+    return false;
 }
 
 bool Polygon::PointPoly::operator<= (const Polygon::PointPoly& other) const {
-    if (!(*this>other)) return 1;
-    return 0;
+    if (!(*this>other)) return true;
+    return false;
 }
