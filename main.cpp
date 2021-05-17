@@ -8,6 +8,7 @@
 
 using namespace std;
 
+/* saved in repo https://github.com/aschoefl/parallel_delaunay */ 
 
 int main ( int argc, char *argv[] ) {
 
@@ -37,8 +38,3 @@ int main ( int argc, char *argv[] ) {
     MPI_Finalize();
     exit(0);
 }
-
-
-// 3: poly: points: [ (1, 1), (0, 1), (1, 0), ]
-// voronoi: [ (0.5, 1.375), (0.354167, 0.354167), (1.375, 0.5), ]
-// radii: [ 0.625, 0.73657, 0.625, ]
